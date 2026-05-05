@@ -197,6 +197,8 @@ function render() {
     app.innerHTML = renderExpenses();
   } else if (state.view === 'rent-history') {
     app.innerHTML = renderRentHistory();
+  } else if (state.view === 'analytics') {
+    app.innerHTML = renderAnalytics();
   }
 }
 
@@ -247,6 +249,7 @@ function renderHome() {
       <header class="top-bar">
         <div class="top-bar-title">${t('my_countries')}</div>
         <div class="top-bar-actions">
+          <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           <button class="icon-btn" onclick="cycleLang()" title="שפה">🌐</button>
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
         </div>
@@ -570,6 +573,103 @@ function renderRentHistory() {
     </div>`;
 }
 
+function renderAnalytics() {
+  const countries = state.data?.countries || [];
+  const allProps  = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _country: c.name })));
+
+  const totalValue    = allProps.reduce((s, p) => s + (p.currentValue || 0), 0);
+  const totalInvested = allProps.reduce((s, p) => s + (p.purchasePrice || 0), 0);
+  const monthlyRent   = allProps.reduce((s, p) => s + (p.monthlyRent || 0), 0);
+  const totalExpenses = allProps.reduce((s, p) => s + [
+    ...(p.maintenance || []), ...(p.improvements || []),
+    ...(p.oneTimeExpenses || []), ...(p.tax?.payments || []), ...(p.brokerages || []),
+  ].reduce((es, e) => es + (Number(e.amount) || 0), 0), 0);
+  const paperProfit   = totalValue - totalInvested;
+  const today         = new Date();
+  const totalMonthlyMortgage = allProps.reduce((s, p) =>
+    s + (p.mortgages || []).filter(m => m.endDate && new Date(m.endDate) > today)
+      .reduce((ms, m) => ms + (Number(m.monthlyPayment) || 0), 0), 0);
+
+  // Pick dominant currency per country
+  const getCur = p => p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+
+  // Sort properties by value desc
+  const topProps = [...allProps].sort((a, b) => (b.currentValue || 0) - (a.currentValue || 0));
+
+  const statTile = (label, value, color = 'var(--text)', note = '') => `
+    <div class="value-tile">
+      <div class="value-tile-label">${label}</div>
+      <div class="value-tile-num" style="color:${color}">${value}</div>
+      ${note ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">${note}</div>` : ''}
+    </div>`;
+
+  return `
+    <div class="page">
+      <header class="top-bar">
+        <button class="back-btn" onclick="goBack()">‹ חזור</button>
+        <div class="top-bar-title">📊 אנליטיקה</div>
+        <div style="width:60px"></div>
+      </header>
+      <div class="content">
+
+        <!-- Summary -->
+        <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
+
+        <div class="values-grid">
+          ${statTile('שווי נכסים כיום', allProps.length ? '~' + fmtCurrency(Math.round(totalValue / allProps.length), getCur(allProps[0])) + '/נכס' : '—')}
+          ${statTile('רווח נייר כולל', fmtCurrency(Math.round(paperProfit), allProps[0] ? getCur(allProps[0]) : 'ILS'), paperProfit >= 0 ? 'var(--success)' : 'var(--danger)')}
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-card-title">💰 פיננסי</div>
+          <div class="detail-row"><span class="detail-label">שווי נכסים כיום</span><span class="detail-value">${fmtCurrency(Math.round(totalValue), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
+          <div class="detail-row"><span class="detail-label">סך ההשקעה</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(totalInvested), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
+          <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${paperProfit>=0?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(paperProfit), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
+          <div class="detail-row"><span class="detail-label">הכנסת שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(monthlyRent), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
+          ${totalMonthlyMortgage ? `<div class="detail-row"><span class="detail-label">תשלומי משכנתא/חודש</span><span class="detail-value" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>` : ''}
+          ${totalExpenses ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">${fmtCurrency(Math.round(totalExpenses), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>` : ''}
+        </div>
+
+        <!-- Per country -->
+        <div class="section-label">לפי מדינה</div>
+        ${countries.map(c => {
+          const props = c.properties || [];
+          const val   = props.reduce((s, p) => s + (p.currentValue || 0), 0);
+          const inv   = props.reduce((s, p) => s + (p.purchasePrice || 0), 0);
+          const rent  = props.reduce((s, p) => s + (p.monthlyRent || 0), 0);
+          const cur   = props[0] ? getCur(props[0]) : 'ILS';
+          const flag  = FLAGS[c.name] || '🌍';
+          return `
+            <div class="detail-card">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-size:1.5rem">${flag}</span>
+                <span style="font-weight:700;font-size:1rem">${esc(c.name)}</span>
+                <span style="font-size:0.78rem;color:var(--muted);margin-right:auto">${props.length} נכסים</span>
+              </div>
+              <div class="detail-row"><span class="detail-label">שווי כולל</span><span class="detail-value">${fmtCurrency(Math.round(val), cur)}</span></div>
+              <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${val>=inv?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(val-inv), cur)}</span></div>
+              ${rent ? `<div class="detail-row"><span class="detail-label">שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(rent), cur)}</span></div>` : ''}
+            </div>`;
+        }).join('')}
+
+        <!-- Top properties -->
+        <div class="section-label">נכסים לפי שווי</div>
+        ${topProps.map((p, i) => `
+          <div class="detail-card" style="padding:12px 16px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.1rem;color:var(--muted);font-weight:700;min-width:24px">${i+1}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600">${esc(p.name || p.address || '—')}</div>
+                <div style="font-size:0.75rem;color:var(--muted)">${esc(p._country)}${p.city ? ' · ' + esc(p.city) : ''}</div>
+              </div>
+              <span style="font-weight:700;direction:ltr;white-space:nowrap">${fmtCurrency(Math.round(p.currentValue||0), getCur(p))}</span>
+            </div>
+          </div>`).join('')}
+
+      </div>
+    </div>`;
+}
+
 function renderCountryCard(c) {
   const props = c.properties || [];
   const currency = props[0]?.currency || 'USD';
@@ -667,7 +767,8 @@ function goToCountry(id) {
 }
 
 function goBack() {
-  if (state.view === 'expenses' || state.view === 'rent-history') state.view = 'property';
+  if (state.view === 'analytics') state.view = 'home';
+  else if (state.view === 'expenses' || state.view === 'rent-history') state.view = 'property';
   else if (state.view === 'property') state.view = 'country';
   else if (state.view === 'country') state.view = 'home';
   else state.view = 'home';
@@ -691,6 +792,12 @@ function goToExpenses(category) {
 
 function goToRentHistory() {
   state.view = 'rent-history';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goToAnalytics() {
+  state.view = 'analytics';
   render();
   window.scrollTo(0, 0);
 }
