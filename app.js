@@ -286,26 +286,87 @@ function renderCountry() {
   if (!country) { goBack(); return ''; }
   const props = country.properties || [];
   const flag = FLAGS[country.name] || '🌍';
+  const currency = country.currency || 'USD';
+  const curSym = CURRENCIES[currency] || currency;
   return `
     <div class="page">
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">${flag} ${esc(country.name)}</div>
-        <div style="width:60px"></div>
+        <button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
         ${props.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
-          : props.map(renderPropertyCard).join('')
+          : props.map(p => renderPropertyCard(p, currency)).join('')
         }
       </div>
       <div class="bottom-bar">
         <span class="user-chip">${props.length} ${t('properties')}</span>
       </div>
+    </div>
+
+    <div id="add-prop-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-prop-modal')">
+      <div class="modal-card" style="max-height:85dvh;overflow-y:auto">
+        <div class="modal-title">🏠 נכס חדש</div>
+        <div class="form-group">
+          <label>שם הנכס *</label>
+          <input type="text" id="np-name" placeholder="למשל: דירה בתל אביב" />
+        </div>
+        <div class="form-group">
+          <label>עיר</label>
+          <input type="text" id="np-city" placeholder="עיר" />
+        </div>
+        <div class="form-group">
+          <label>כתובת</label>
+          <input type="text" id="np-address" placeholder="רחוב ומספר" />
+        </div>
+        <div class="form-group">
+          <label>סוג נכס</label>
+          <select id="np-type">
+            <option value="apartment">דירה</option>
+            <option value="house">בית</option>
+            <option value="commercial">מסחרי</option>
+            <option value="land">קרקע</option>
+            <option value="parking">חניה</option>
+            <option value="storage">מחסן</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>סטטוס</label>
+          <select id="np-status">
+            <option value="rented">מושכר</option>
+            <option value="empty">ריק</option>
+            <option value="owned">בבעלות</option>
+            <option value="for_sale">למכירה</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>שווי נוכחי (${curSym})</label>
+          <input type="number" id="np-value" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>מחיר קנייה (${curSym})</label>
+          <input type="number" id="np-purchase" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>שכירות חודשית (${curSym})</label>
+          <input type="number" id="np-rent" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>תאריך קנייה</label>
+          <input type="date" id="np-date" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('add-prop-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitAddProperty('${esc(currency)}')">הוסף נכס</button>
+        </div>
+      </div>
     </div>`;
 }
 
-function renderPropertyCard(p) {
+function renderPropertyCard(p, countryCurrency = 'USD') {
+  const cur = countryCurrency || p.currency || 'USD';
   const statusMap = { rented: 'status_rented', owned: 'status_owned', for_sale: 'status_for_sale', empty: 'status_empty' };
   const typeMap = { apartment: 'type_apartment', house: 'type_house', commercial: 'type_commercial', land: 'type_land', parking: 'type_parking', storage: 'type_storage' };
   const statusKey = statusMap[p.status] || p.status || '';
@@ -329,17 +390,17 @@ function renderPropertyCard(p) {
         ${p.currentValue ? `
           <div class="prop-value-item">
             <div class="prop-value-label">${t('current_value')}</div>
-            <div class="prop-value-num">${fmtCurrency(p.currentValue, p.currency)}</div>
+            <div class="prop-value-num">${fmtCurrency(p.currentValue, cur)}</div>
           </div>` : ''}
         ${p.monthlyRent ? `
           <div class="prop-value-item">
             <div class="prop-value-label">${t('monthly_rent')}</div>
-            <div class="prop-value-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, p.currency)}</div>
+            <div class="prop-value-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, cur)}</div>
           </div>` : ''}
         ${p.purchasePrice ? `
           <div class="prop-value-item">
             <div class="prop-value-label">${t('purchase_price')}</div>
-            <div class="prop-value-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, p.currency)}</div>
+            <div class="prop-value-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, cur)}</div>
           </div>` : ''}
       </div>
       <div class="prop-chevron">›</div>
@@ -584,12 +645,12 @@ function renderExpenses() {
           : items.map(e => `
             <div class="detail-card">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-                <div>
+                <div style="flex:1;min-width:0">
                   <div style="font-weight:600;margin-bottom:3px">${esc(e.description || e.note || e.category || '—')}</div>
                   ${e.date ? `<div style="font-size:0.78rem;color:var(--muted)">${new Date(e.date).toLocaleDateString('he-IL')}</div>` : ''}
-                  ${e.category ? `<div style="font-size:0.75rem;color:var(--accent);margin-top:2px">${esc(e.category)}</div>` : ''}
                 </div>
-                <div style="color:var(--danger);font-weight:700;font-size:1rem;white-space:nowrap;direction:ltr">${fmtCurrency(Math.round(e.amount), currency)}</div>
+                <span style="color:var(--danger);font-weight:700;font-size:1rem;white-space:nowrap;direction:ltr">${fmtCurrency(Math.round(e.amount), currency)}</span>
+                <button onclick="deleteExpenseItem('${esc(cat.key)}','${esc(e.id)}')" style="background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
               </div>
             </div>`).join('')
         }
@@ -655,9 +716,10 @@ function renderRentHistory() {
         ${items.length === 0 ? `<div class="empty-state"><div class="empty-icon">💵</div><div class="empty-text">אין תשלומים עדיין</div></div>` : ''}
         ${items.map(r => `
           <div class="detail-card" style="padding:12px 16px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
               <span style="color:var(--muted);font-size:0.88rem">${r.month || ''}</span>
-              <span style="color:var(--success);font-weight:700;direction:ltr">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+              <span style="color:var(--success);font-weight:700;direction:ltr;flex:1;text-align:left">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+              <button onclick="deleteRentPayment('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
             </div>
           </div>`).join('')}
       </div>
@@ -871,6 +933,63 @@ async function saveData() {
 // ===== MODAL =====
 function showModal(id) { document.getElementById(id)?.classList.add('show'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+
+async function submitAddProperty(currency) {
+  const name = document.getElementById('np-name').value.trim();
+  if (!name) { toast('נא למלא שם נכס'); return; }
+  const rate = rates[currency] || 1;
+  const toUSD = v => { const n = parseFloat(v); return n > 0 ? n / rate : undefined; };
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  if (!country) return;
+  const newProp = {
+    id: uid(),
+    name,
+    city: document.getElementById('np-city').value.trim() || undefined,
+    address: document.getElementById('np-address').value.trim() || undefined,
+    type: document.getElementById('np-type').value,
+    status: document.getElementById('np-status').value,
+    currentValue: toUSD(document.getElementById('np-value').value),
+    purchasePrice: toUSD(document.getElementById('np-purchase').value),
+    monthlyRent: toUSD(document.getElementById('np-rent').value),
+    purchaseDate: document.getElementById('np-date').value || undefined,
+    rentHistory: [], maintenance: [], improvements: [], oneTimeExpenses: [], mortgages: [], brokerages: [],
+  };
+  if (!country.properties) country.properties = [];
+  country.properties.push(newProp);
+  closeModal('add-prop-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ נכס נוסף');
+  render();
+}
+
+async function deleteRentPayment(paymentId) {
+  if (!confirm('למחוק תשלום זה?')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  p.rentHistory = (p.rentHistory || []).filter(r => r.id !== paymentId);
+  toast('שומר...');
+  await saveData();
+  toast('✓ נמחק');
+  render();
+}
+
+async function deleteExpenseItem(catKey, itemId) {
+  if (!confirm('למחוק הוצאה זו?')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  if (catKey === 'tax') {
+    if (p.tax?.payments) p.tax.payments = p.tax.payments.filter(e => e.id !== itemId);
+  } else {
+    if (p[catKey]) p[catKey] = p[catKey].filter(e => e.id !== itemId);
+  }
+  toast('שומר...');
+  await saveData();
+  toast('✓ נמחק');
+  render();
+}
 
 async function submitEditProperty(currency) {
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
