@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v1';
+const CACHE = 'wwpm-v2';
 const ASSETS = ['/index.html', '/app.js', '/style.css', '/manifest.json'];
 
 self.addEventListener('install', e => {
