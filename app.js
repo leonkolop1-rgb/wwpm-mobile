@@ -396,7 +396,7 @@ function renderProperty() {
         </div>
 
         <!-- Tenant info -->
-        ${p.status === 'rented' && (p.tenantName || p.leaseEnd) ? `
+        ${(p.tenantName || p.leaseStart || p.leaseEnd) ? `
         <div class="detail-card">
           <div class="detail-card-title">🔑 פרטי שוכר</div>
           ${row('שם שוכר', p.tenantName)}
