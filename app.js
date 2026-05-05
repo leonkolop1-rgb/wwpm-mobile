@@ -328,12 +328,18 @@ function renderProperty() {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) { goBack(); return ''; }
 
-  const statusMap = { rented:'status_rented', owned:'status_owned', for_sale:'status_for_sale', empty:'status_empty' };
-  const typeMap   = { apartment:'type_apartment', house:'type_house', commercial:'type_commercial', land:'type_land', parking:'type_parking', storage:'type_storage' };
-  const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
 
-  // Mortgage summary
+  // Expenses
+  const maintenance  = p.maintenance || [];
+  const improvements = p.improvements || [];
+  const oneTime      = p.oneTimeExpenses || [];
+  const taxPayments  = p.tax?.payments || [];
+  const brokerages   = p.brokerages || [];
+  const totalExpenses = [...maintenance, ...improvements, ...oneTime, ...taxPayments, ...brokerages]
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+  // Mortgages
   const mortgages = p.mortgages || [];
   const today = new Date();
   const activeMortgages = mortgages.filter(m => {
@@ -344,37 +350,33 @@ function renderProperty() {
   });
   const totalMonthlyMortgage = activeMortgages.reduce((s, m) => s + (Number(m.monthlyPayment) || 0), 0);
 
-  // Expenses total
-  const allExpenses = [
-    ...(p.expenses?.maintenance || []),
-    ...(p.expenses?.tax || []),
-    ...(p.expenses?.insurance || []),
-    ...(p.expenses?.renovation || []),
-    ...(p.expenses?.other || []),
-    ...(p.brokerages || []),
-  ];
-  const totalExpenses = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  // Rent history — last 3 months
+  const rentHistory = (p.rentHistory || []).slice(0, 3);
 
   const row = (label, value, color = '') => value ? `
     <div class="detail-row">
       <span class="detail-label">${label}</span>
-      <span class="detail-value" ${color ? `style="color:${color}"` : ''}>${value}</span>
+      <span class="detail-value"${color ? ` style="color:${color}"` : ''}>${value}</span>
     </div>` : '';
+
+  const statusColors = { rented: 'var(--success)', for_sale: 'var(--warning)', owned: 'var(--accent)', empty: 'var(--muted)' };
+  const statusLabels = { rented: t('status_rented'), for_sale: t('status_for_sale'), owned: t('status_owned'), empty: t('status_empty') };
+  const typeLabels   = { apartment: t('type_apartment'), house: t('type_house'), commercial: t('type_commercial'), land: t('type_land'), parking: t('type_parking'), storage: t('type_storage') };
 
   return `
     <div class="page">
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
-        <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.city || '—')}</div>
+        <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
         <div style="width:60px"></div>
       </header>
 
       <div class="content">
 
-        <!-- Status + Type badges -->
+        <!-- Badges -->
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${p.status ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor};padding:5px 14px;font-size:0.8rem">${t(statusMap[p.status]||p.status)}</span>` : ''}
-          ${p.type ? `<span class="prop-badge" style="color:var(--accent);border-color:var(--accent);padding:5px 14px;font-size:0.8rem">${t(typeMap[p.type]||p.type)}</span>` : ''}
+          ${p.status ? `<span class="prop-badge" style="color:${statusColors[p.status]||'var(--muted)'};border-color:${statusColors[p.status]||'var(--border)'};padding:5px 14px;font-size:0.8rem">${statusLabels[p.status]||p.status}</span>` : ''}
+          ${p.type ? `<span class="prop-badge" style="color:var(--accent);border-color:var(--accent);padding:5px 14px;font-size:0.8rem">${typeLabels[p.type]||p.type}</span>` : ''}
           ${pct !== 100 ? `<span class="prop-badge" style="color:var(--muted);border-color:var(--border);padding:5px 14px;font-size:0.8rem">👤 ${pct}%</span>` : ''}
         </div>
 
@@ -383,25 +385,38 @@ function renderProperty() {
           ${p.currentValue ? `<div class="value-tile"><div class="value-tile-label">${t('current_value')}</div><div class="value-tile-num">${fmtCurrency(p.currentValue, p.currency)}</div></div>` : ''}
           ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, p.currency)}</div></div>` : ''}
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, p.currency)}</div></div>` : ''}
-          ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא חודשית</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(totalMonthlyMortgage, p.currency)}</div></div>` : ''}
+          ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא/חודש</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(totalMonthlyMortgage, p.currency)}</div></div>` : ''}
         </div>
 
         <!-- Property details -->
         <div class="detail-card">
-          ${row('📍 עיר', p.city)}
+          ${row('📍 כתובת', p.address)}
+          ${row('🌍 מדינה', country?.name)}
+          ${row('📅 תאריך קנייה', p.purchaseDate ? new Date(p.purchaseDate).toLocaleDateString('he-IL') : '')}
           ${row('📐 שטח', p.area ? `${p.area} מ"ר` : '')}
           ${row('🏢 קומה', p.floor != null ? String(p.floor) : '')}
           ${row('🛏️ חדרים', p.rooms ? String(p.rooms) : '')}
-          ${row('🌍 מדינה', country?.name)}
         </div>
 
-        <!-- Tenant info -->
-        ${(p.tenantName || p.leaseStart || p.leaseEnd) ? `
+        <!-- Tenant -->
+        ${(p.tenantName || p.leaseStart || p.leaseEnd || p.tenantPhone) ? `
         <div class="detail-card">
           <div class="detail-card-title">🔑 פרטי שוכר</div>
           ${row('שם שוכר', p.tenantName)}
+          ${row('טלפון', p.tenantPhone)}
           ${row('תחילת שכירות', p.leaseStart ? new Date(p.leaseStart).toLocaleDateString('he-IL') : '')}
           ${row('סיום שכירות', p.leaseEnd ? new Date(p.leaseEnd).toLocaleDateString('he-IL') : '')}
+        </div>` : ''}
+
+        <!-- Rent history -->
+        ${rentHistory.length ? `
+        <div class="detail-card">
+          <div class="detail-card-title">💵 תשלומי שכירות אחרונים</div>
+          ${rentHistory.map(r => `
+            <div class="mortgage-row">
+              <span style="color:var(--muted)">${r.month || ''}</span>
+              <span style="color:var(--success);font-weight:700">${fmtCurrency(r.amount, r.paymentCurrency || p.currency)}</span>
+            </div>`).join('')}
         </div>` : ''}
 
         <!-- Mortgages -->
@@ -410,18 +425,20 @@ function renderProperty() {
           <div class="detail-card-title">🏦 משכנתאות פעילות (${activeMortgages.length})</div>
           ${activeMortgages.map(m => `
             <div class="mortgage-row">
-              <span>${m.bankName || 'בנק'}</span>
+              <span>${esc(m.bankName || 'בנק')}</span>
               <span style="color:var(--warning);font-weight:700">${fmtCurrency(m.monthlyPayment, p.currency)}/חודש</span>
             </div>`).join('')}
         </div>` : ''}
 
-        <!-- Financials -->
-        ${totalExpenses ? `
+        <!-- Financial summary -->
         <div class="detail-card">
           <div class="detail-card-title">💰 סיכום פיננסי</div>
-          ${row('סך הוצאות', fmtCurrency(totalExpenses, p.currency), 'var(--danger)')}
-          ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(p.currentValue - p.purchasePrice, p.currency), p.currentValue > p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
-        </div>` : ''}
+          ${row('סך הוצאות', totalExpenses ? fmtCurrency(totalExpenses, p.currency) : '', 'var(--danger)')}
+          ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(p.currentValue - p.purchasePrice, p.currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
+          ${maintenance.length ? row('תחזוקה', `${maintenance.length} פריטים`) : ''}
+          ${improvements.length ? row('שיפורים', `${improvements.length} פריטים`) : ''}
+          ${oneTime.length ? row('הוצאות חד-פעמיות', `${oneTime.length} פריטים`) : ''}
+        </div>
 
         <!-- Notes -->
         ${p.notes ? `
@@ -429,12 +446,6 @@ function renderProperty() {
           <div class="detail-card-title">📝 הערות</div>
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
-
-        <!-- DEBUG -->
-        <div class="detail-card" style="border-color:var(--warning)">
-          <div class="detail-card-title" style="color:var(--warning)">🔍 DEBUG — מבנה נתונים</div>
-          <pre style="font-size:0.65rem;color:var(--muted);overflow-x:auto;white-space:pre-wrap;direction:ltr">${esc(JSON.stringify(p, null, 2))}</pre>
-        </div>
 
       </div>
     </div>`;
