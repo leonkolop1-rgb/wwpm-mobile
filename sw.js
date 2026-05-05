@@ -1,5 +1,11 @@
-const CACHE = 'wwpm-v5';
-const ASSETS = ['/index.html', '/app.js', '/style.css', '/manifest.json'];
+const CACHE = 'wwpm-v6';
+const ASSETS = [
+  '/wwpm-mobile/',
+  '/wwpm-mobile/index.html',
+  '/wwpm-mobile/app.js',
+  '/wwpm-mobile/style.css',
+  '/wwpm-mobile/manifest.json',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
