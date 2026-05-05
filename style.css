@@ -390,6 +390,23 @@ html, body {
 }
 .mortgage-row:last-child { border-bottom: none; }
 
+/* ===== EXPENSE CATEGORY ROW ===== */
+.expense-cat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.expense-cat-row:last-child { border-bottom: none; }
+.expense-cat-row:active { background: var(--surface2); }
+.expense-cat-right { display: flex; align-items: center; gap: 6px; }
+
 /* ===== TOAST ===== */
 .toast {
   position: fixed;

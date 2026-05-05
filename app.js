@@ -63,6 +63,7 @@ const state = {
   error: null,
   currentCountryId: null,
   currentPropertyId: null,
+  expenseCategory: null,
 };
 
 // restore session
@@ -192,6 +193,10 @@ function render() {
     app.innerHTML = renderCountry();
   } else if (state.view === 'property') {
     app.innerHTML = renderProperty();
+  } else if (state.view === 'expenses') {
+    app.innerHTML = renderExpenses();
+  } else if (state.view === 'rent-history') {
+    app.innerHTML = renderRentHistory();
   }
 }
 
@@ -441,10 +446,25 @@ function renderProperty() {
           <div class="detail-card-title">💰 סיכום פיננסי</div>
           ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(Math.round(p.currentValue - p.purchasePrice), currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
           ${totalExpenses ? row('סך הוצאות', fmtCurrency(Math.round(totalExpenses), currency), 'var(--danger)') : ''}
-          ${maintenance.length ? row('תחזוקה', `${maintenance.length} פריטים`) : ''}
-          ${improvements.length ? row('שיפורים', `${improvements.length} פריטים`) : ''}
-          ${oneTime.length ? row('הוצאות חד-פעמיות', `${oneTime.length} פריטים`) : ''}
         </div>
+
+        <!-- Expense categories -->
+        ${(maintenance.length || improvements.length || oneTime.length || taxPayments.length || brokerages.length) ? `
+        <div class="detail-card" style="padding:0;overflow:hidden">
+          <div class="detail-card-title" style="padding:12px 16px 8px">📋 הוצאות לפי קטגוריה</div>
+          ${maintenance.length ? `<div class="expense-cat-row" onclick="goToExpenses('maintenance')"><span>🔧 תחזוקה</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(maintenance.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+          ${improvements.length ? `<div class="expense-cat-row" onclick="goToExpenses('improvements')"><span>🏗️ שיפורים</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(improvements.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+          ${oneTime.length ? `<div class="expense-cat-row" onclick="goToExpenses('oneTime')"><span>💸 הוצאות חד-פעמיות</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(oneTime.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+          ${taxPayments.length ? `<div class="expense-cat-row" onclick="goToExpenses('tax')"><span>🏛️ מיסים</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(taxPayments.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+          ${brokerages.length ? `<div class="expense-cat-row" onclick="goToExpenses('brokerage')"><span>🤝 תיווך</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(brokerages.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+        </div>` : ''}
+
+        <!-- Rent history shortcut -->
+        ${rentHistory.length ? `
+        <div class="expense-cat-row" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:0" onclick="goToRentHistory()">
+          <span>💵 היסטוריית שכירות</span>
+          <span class="expense-cat-right"><span style="color:var(--muted)">${(p.rentHistory||[]).filter(r=>!r.autoFilled).length} תשלומים</span><span class="chevron">›</span></span>
+        </div>` : ''}
 
         <!-- Notes -->
         ${p.notes ? `
@@ -456,6 +476,98 @@ function renderProperty() {
       </div>
     </div>`;
 
+}
+
+function renderExpenses() {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) { goBack(); return ''; }
+
+  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  const catMap = {
+    maintenance:  { label: '🔧 תחזוקה',           items: p.maintenance || [] },
+    improvements: { label: '🏗️ שיפורים',           items: p.improvements || [] },
+    oneTime:      { label: '💸 הוצאות חד-פעמיות', items: p.oneTimeExpenses || [] },
+    tax:          { label: '🏛️ מיסים',             items: p.tax?.payments || [] },
+    brokerage:    { label: '🤝 תיווך',             items: p.brokerages || [] },
+  };
+  const cat = catMap[state.expenseCategory];
+  if (!cat) { goBack(); return ''; }
+
+  const items = [...cat.items].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = items.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+  return `
+    <div class="page">
+      <header class="top-bar">
+        <button class="back-btn" onclick="goBack()">‹ חזור</button>
+        <div class="top-bar-title">${cat.label}</div>
+        <div style="width:60px"></div>
+      </header>
+      <div class="content">
+        <div class="value-tile" style="background:var(--surface)">
+          <div class="value-tile-label">סך הכל</div>
+          <div class="value-tile-num" style="color:var(--danger)">${fmtCurrency(Math.round(total), currency)}</div>
+        </div>
+        ${items.length === 0
+          ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">אין פריטים</div></div>`
+          : items.map(e => `
+            <div class="detail-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px">${esc(e.description || e.note || e.category || '—')}</div>
+                  ${e.date ? `<div style="font-size:0.78rem;color:var(--muted)">${new Date(e.date).toLocaleDateString('he-IL')}</div>` : ''}
+                  ${e.category ? `<div style="font-size:0.75rem;color:var(--accent);margin-top:2px">${esc(e.category)}</div>` : ''}
+                </div>
+                <div style="color:var(--danger);font-weight:700;font-size:1rem;white-space:nowrap;direction:ltr">${fmtCurrency(Math.round(e.amount), currency)}</div>
+              </div>
+            </div>`).join('')
+        }
+      </div>
+      <div class="bottom-bar">
+        <span class="user-chip">${items.length} פריטים</span>
+      </div>
+    </div>`;
+}
+
+function renderRentHistory() {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) { goBack(); return ''; }
+
+  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  const items = [...(p.rentHistory || [])]
+    .filter(r => !r.autoFilled)
+    .sort((a, b) => b.month.localeCompare(a.month));
+  const total = items.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+  return `
+    <div class="page">
+      <header class="top-bar">
+        <button class="back-btn" onclick="goBack()">‹ חזור</button>
+        <div class="top-bar-title">💵 היסטוריית שכירות</div>
+        <div style="width:60px"></div>
+      </header>
+      <div class="content">
+        <div class="values-grid">
+          <div class="value-tile">
+            <div class="value-tile-label">סך הכל התקבל</div>
+            <div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(total), currency)}</div>
+          </div>
+          <div class="value-tile">
+            <div class="value-tile-label">מספר תשלומים</div>
+            <div class="value-tile-num">${items.length}</div>
+          </div>
+        </div>
+        ${items.map(r => `
+          <div class="detail-card" style="padding:12px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--muted);font-size:0.88rem">${r.month || ''}</span>
+              <span style="color:var(--success);font-weight:700;direction:ltr">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function renderCountryCard(c) {
@@ -555,7 +667,10 @@ function goToCountry(id) {
 }
 
 function goBack() {
-  state.view = 'home';
+  if (state.view === 'expenses' || state.view === 'rent-history') state.view = 'property';
+  else if (state.view === 'property') state.view = 'country';
+  else if (state.view === 'country') state.view = 'home';
+  else state.view = 'home';
   render();
   window.scrollTo(0, 0);
 }
@@ -563,6 +678,19 @@ function goBack() {
 function goToProperty(id) {
   state.currentPropertyId = id;
   state.view = 'property';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goToExpenses(category) {
+  state.expenseCategory = category;
+  state.view = 'expenses';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goToRentHistory() {
+  state.view = 'rent-history';
   render();
   window.scrollTo(0, 0);
 }
