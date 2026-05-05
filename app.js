@@ -47,7 +47,7 @@ const sb = {
 };
 
 // ===== EXCHANGE RATES =====
-const FALLBACK_RATES = { USD: 1, EUR: 0.92, ILS: 3.75, GEL: 2.70, GBP: 0.79, AED: 3.67 };
+const FALLBACK_RATES = { USD: 1, EUR: 0.93, ILS: 3.60, GEL: 2.75, GBP: 0.79, AED: 3.67 };
 let rates = { ...FALLBACK_RATES };
 
 async function fetchRates() {
@@ -760,7 +760,7 @@ async function loadUserData() {
   } catch {
     state.data = { countries: [] };
   }
-  fetchRates();
+  await fetchRates();
   state.view = 'home';
   render();
 }
