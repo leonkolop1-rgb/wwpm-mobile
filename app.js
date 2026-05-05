@@ -61,6 +61,7 @@ const state = {
   lang: localStorage.getItem('wwpm-lang') || 'heb',
   loading: false,
   error: null,
+  currentCountryId: null,
 };
 
 // restore session
@@ -82,8 +83,18 @@ const STRINGS = {
     err_wrong_pass: 'סיסמה שגויה',
     my_countries: 'המדינות שלי',
     no_countries: 'אין מדינות עדיין',
+    no_properties: 'אין נכסים במדינה זו',
     properties: 'נכסים', loading: 'טוען...',
-    logout: 'יציאה',
+    logout: 'יציאה', back: 'חזור',
+    current_value: 'שווי נוכחי',
+    purchase_price: 'מחיר רכישה',
+    monthly_rent: 'שכירות חודשית',
+    ownership: 'בעלות',
+    status_rented: 'מושכר', status_owned: 'בבעלות',
+    status_for_sale: 'למכירה', status_empty: 'ריק',
+    type_apartment: 'דירה', type_house: 'בית',
+    type_commercial: 'מסחרי', type_land: 'קרקע',
+    type_parking: 'חניה', type_storage: 'מחסן',
   },
   eng: {
     app_title: 'World Wide Property Manager', login: 'Login',
@@ -94,8 +105,18 @@ const STRINGS = {
     err_wrong_pass: 'Wrong password',
     my_countries: 'My Countries',
     no_countries: 'No countries yet',
+    no_properties: 'No properties in this country',
     properties: 'Properties', loading: 'Loading...',
-    logout: 'Sign Out',
+    logout: 'Sign Out', back: 'Back',
+    current_value: 'Current Value',
+    purchase_price: 'Purchase Price',
+    monthly_rent: 'Monthly Rent',
+    ownership: 'Ownership',
+    status_rented: 'Rented', status_owned: 'Owned',
+    status_for_sale: 'For Sale', status_empty: 'Empty',
+    type_apartment: 'Apartment', type_house: 'House',
+    type_commercial: 'Commercial', type_land: 'Land',
+    type_parking: 'Parking', type_storage: 'Storage',
   },
   rus: {
     app_title: 'Управление недвижимостью', login: 'Вход',
@@ -106,8 +127,18 @@ const STRINGS = {
     err_wrong_pass: 'Неверный пароль',
     my_countries: 'Мои страны',
     no_countries: 'Стран пока нет',
+    no_properties: 'Нет объектов в этой стране',
     properties: 'Объектов', loading: 'Загрузка...',
-    logout: 'Выйти',
+    logout: 'Выйти', back: 'Назад',
+    current_value: 'Текущая стоимость',
+    purchase_price: 'Цена покупки',
+    monthly_rent: 'Аренда в месяц',
+    ownership: 'Владение',
+    status_rented: 'Арендуется', status_owned: 'Владение',
+    status_for_sale: 'На продажу', status_empty: 'Пусто',
+    type_apartment: 'Квартира', type_house: 'Дом',
+    type_commercial: 'Коммерческая', type_land: 'Земля',
+    type_parking: 'Паркинг', type_storage: 'Склад',
   },
 };
 
@@ -156,6 +187,8 @@ function render() {
     loadUserData();
   } else if (state.view === 'home') {
     app.innerHTML = renderHome();
+  } else if (state.view === 'country') {
+    app.innerHTML = renderCountry();
   }
 }
 
@@ -219,6 +252,71 @@ function renderHome() {
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.currentUser)}</span>
       </div>
+    </div>`;
+}
+
+function renderCountry() {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  if (!country) { goBack(); return ''; }
+  const props = country.properties || [];
+  const flag = FLAGS[country.name] || '🌍';
+  return `
+    <div class="page">
+      <header class="top-bar">
+        <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
+        <div class="top-bar-title">${flag} ${esc(country.name)}</div>
+        <div style="width:60px"></div>
+      </header>
+      <div class="content">
+        ${props.length === 0
+          ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
+          : props.map(renderPropertyCard).join('')
+        }
+      </div>
+      <div class="bottom-bar">
+        <span class="user-chip">${props.length} ${t('properties')}</span>
+      </div>
+    </div>`;
+}
+
+function renderPropertyCard(p) {
+  const statusMap = { rented: 'status_rented', owned: 'status_owned', for_sale: 'status_for_sale', empty: 'status_empty' };
+  const typeMap = { apartment: 'type_apartment', house: 'type_house', commercial: 'type_commercial', land: 'type_land', parking: 'type_parking', storage: 'type_storage' };
+  const statusKey = statusMap[p.status] || p.status || '';
+  const typeKey = typeMap[p.type] || p.type || '';
+  const statusLabel = statusKey ? t(statusKey) : '';
+  const typeLabel = typeKey ? t(typeKey) : '';
+  const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
+  const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
+  return `
+    <div class="prop-card" onclick="goToProperty('${esc(p.id)}')">
+      <div class="prop-card-header">
+        <div class="prop-name">${esc(p.name || p.city || '—')}</div>
+        ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
+      </div>
+      <div class="prop-meta">
+        ${p.city ? `<span>📍 ${esc(p.city)}</span>` : ''}
+        ${typeLabel ? `<span>🏠 ${typeLabel}</span>` : ''}
+        ${pct !== 100 ? `<span>👤 ${pct}%</span>` : ''}
+      </div>
+      <div class="prop-values">
+        ${p.currentValue ? `
+          <div class="prop-value-item">
+            <div class="prop-value-label">${t('current_value')}</div>
+            <div class="prop-value-num">${fmtCurrency(p.currentValue, p.currency)}</div>
+          </div>` : ''}
+        ${p.monthlyRent ? `
+          <div class="prop-value-item">
+            <div class="prop-value-label">${t('monthly_rent')}</div>
+            <div class="prop-value-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, p.currency)}</div>
+          </div>` : ''}
+        ${p.purchasePrice ? `
+          <div class="prop-value-item">
+            <div class="prop-value-label">${t('purchase_price')}</div>
+            <div class="prop-value-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, p.currency)}</div>
+          </div>` : ''}
+      </div>
+      <div class="prop-chevron">›</div>
     </div>`;
 }
 
@@ -312,8 +410,21 @@ function doLogout() {
 }
 
 function goToCountry(id) {
-  // Step 2 — coming soon
-  toast('בקרוב — שלב 2 🚀');
+  state.currentCountryId = id;
+  state.view = 'country';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goBack() {
+  state.view = 'home';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function goToProperty(id) {
+  // Step 3 — coming soon
+  toast('בקרוב — שלב 3 🚀');
 }
 
 // ===== INIT =====
