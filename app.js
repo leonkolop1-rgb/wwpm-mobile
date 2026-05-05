@@ -329,6 +329,7 @@ function renderProperty() {
   if (!p) { goBack(); return ''; }
 
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
+  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
 
   // Expenses
   const maintenance  = p.maintenance || [];
@@ -339,19 +340,20 @@ function renderProperty() {
   const totalExpenses = [...maintenance, ...improvements, ...oneTime, ...taxPayments, ...brokerages]
     .reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
-  // Mortgages
+  // Mortgages — use endDate directly
   const mortgages = p.mortgages || [];
   const today = new Date();
-  const activeMortgages = mortgages.filter(m => {
-    if (!m.startDate || !m.months) return false;
-    const end = new Date(m.startDate);
-    end.setMonth(end.getMonth() + Number(m.months));
-    return end > today;
-  });
+  const activeMortgages = mortgages.filter(m => m.endDate && new Date(m.endDate) > today);
   const totalMonthlyMortgage = activeMortgages.reduce((s, m) => s + (Number(m.monthlyPayment) || 0), 0);
 
-  // Rent history — last 3 months
-  const rentHistory = (p.rentHistory || []).slice(0, 3);
+  // Tenant
+  const tenant = p.tenantInfo || {};
+
+  // Rent history — last 3 months sorted by month desc
+  const rentHistory = [...(p.rentHistory || [])]
+    .filter(r => !r.autoFilled)
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .slice(0, 3);
 
   const row = (label, value, color = '') => value ? `
     <div class="detail-row">
@@ -382,15 +384,16 @@ function renderProperty() {
 
         <!-- Main values -->
         <div class="values-grid">
-          ${p.currentValue ? `<div class="value-tile"><div class="value-tile-label">${t('current_value')}</div><div class="value-tile-num">${fmtCurrency(p.currentValue, p.currency)}</div></div>` : ''}
-          ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, p.currency)}</div></div>` : ''}
-          ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, p.currency)}</div></div>` : ''}
-          ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא/חודש</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(totalMonthlyMortgage, p.currency)}</div></div>` : ''}
+          ${p.currentValue ? `<div class="value-tile"><div class="value-tile-label">${t('current_value')}</div><div class="value-tile-num">${fmtCurrency(Math.round(p.currentValue), currency)}</div></div>` : ''}
+          ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
+          ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
+          ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא/חודש</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), currency)}</div></div>` : ''}
         </div>
 
         <!-- Property details -->
         <div class="detail-card">
-          ${row('📍 כתובת', p.address)}
+          ${row('📍 עיר', p.city)}
+          ${row('🏠 כתובת', p.address)}
           ${row('🌍 מדינה', country?.name)}
           ${row('📅 תאריך קנייה', p.purchaseDate ? new Date(p.purchaseDate).toLocaleDateString('he-IL') : '')}
           ${row('📐 שטח', p.area ? `${p.area} מ"ר` : '')}
@@ -399,13 +402,13 @@ function renderProperty() {
         </div>
 
         <!-- Tenant -->
-        ${(p.tenantName || p.leaseStart || p.leaseEnd || p.tenantPhone) ? `
+        ${(tenant.name || tenant.startDate || tenant.endDate) ? `
         <div class="detail-card">
           <div class="detail-card-title">🔑 פרטי שוכר</div>
-          ${row('שם שוכר', p.tenantName)}
-          ${row('טלפון', p.tenantPhone)}
-          ${row('תחילת שכירות', p.leaseStart ? new Date(p.leaseStart).toLocaleDateString('he-IL') : '')}
-          ${row('סיום שכירות', p.leaseEnd ? new Date(p.leaseEnd).toLocaleDateString('he-IL') : '')}
+          ${row('שם שוכר', tenant.name)}
+          ${row('טלפון', tenant.phone)}
+          ${row('תחילת שכירות', tenant.startDate ? new Date(tenant.startDate).toLocaleDateString('he-IL') : '')}
+          ${row('סיום שכירות', tenant.endDate ? new Date(tenant.endDate).toLocaleDateString('he-IL') : '')}
         </div>` : ''}
 
         <!-- Rent history -->
@@ -425,16 +428,19 @@ function renderProperty() {
           <div class="detail-card-title">🏦 משכנתאות פעילות (${activeMortgages.length})</div>
           ${activeMortgages.map(m => `
             <div class="mortgage-row">
-              <span>${esc(m.bankName || 'בנק')}</span>
-              <span style="color:var(--warning);font-weight:700">${fmtCurrency(m.monthlyPayment, p.currency)}/חודש</span>
+              <div>
+                <div style="font-weight:600">${esc(m.name || m.lender || 'משכנתא')}</div>
+                ${m.lender ? `<div style="font-size:0.75rem;color:var(--muted)">${esc(m.lender)}</div>` : ''}
+              </div>
+              <span style="color:var(--warning);font-weight:700">${fmtCurrency(Math.round(m.monthlyPayment), currency)}/חודש</span>
             </div>`).join('')}
         </div>` : ''}
 
         <!-- Financial summary -->
         <div class="detail-card">
           <div class="detail-card-title">💰 סיכום פיננסי</div>
-          ${row('סך הוצאות', totalExpenses ? fmtCurrency(totalExpenses, p.currency) : '', 'var(--danger)')}
-          ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(p.currentValue - p.purchasePrice, p.currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
+          ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(Math.round(p.currentValue - p.purchasePrice), currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
+          ${totalExpenses ? row('סך הוצאות', fmtCurrency(Math.round(totalExpenses), currency), 'var(--danger)') : ''}
           ${maintenance.length ? row('תחזוקה', `${maintenance.length} פריטים`) : ''}
           ${improvements.length ? row('שיפורים', `${improvements.length} פריטים`) : ''}
           ${oneTime.length ? row('הוצאות חד-פעמיות', `${oneTime.length} פריטים`) : ''}
@@ -449,6 +455,7 @@ function renderProperty() {
 
       </div>
     </div>`;
+
 }
 
 function renderCountryCard(c) {
