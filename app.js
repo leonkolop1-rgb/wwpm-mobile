@@ -388,12 +388,15 @@ function renderProperty() {
   const statusLabels = { rented: t('status_rented'), for_sale: t('status_for_sale'), owned: t('status_owned'), empty: t('status_empty') };
   const typeLabels   = { apartment: t('type_apartment'), house: t('type_house'), commercial: t('type_commercial'), land: t('type_land'), parking: t('type_parking'), storage: t('type_storage') };
 
+  const curSym = CURRENCIES[currency] || currency;
+  const fromUSDDisplay = v => v ? Math.round(v * (rates[currency] || 1)) : '';
+
   return `
     <div class="page">
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
-        <div style="width:60px"></div>
+        <button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>
       </header>
 
       <div class="content">
@@ -492,6 +495,53 @@ function renderProperty() {
         </div>` : ''}
 
       </div>
+    </div>
+
+    <div id="edit-prop-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('edit-prop-modal')">
+      <div class="modal-card" style="max-height:85dvh;overflow-y:auto">
+        <div class="modal-title">✏️ עריכת נכס</div>
+
+        <div class="form-group">
+          <label>שווי נוכחי (${curSym})</label>
+          <input type="number" id="ep-value" value="${fromUSDDisplay(p.currentValue)}" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>שכירות חודשית (${curSym})</label>
+          <input type="number" id="ep-rent" value="${fromUSDDisplay(p.monthlyRent)}" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="form-group">
+          <label>סטטוס</label>
+          <select id="ep-status">
+            <option value="rented" ${p.status==='rented'?'selected':''}>מושכר</option>
+            <option value="empty" ${p.status==='empty'?'selected':''}>ריק</option>
+            <option value="for_sale" ${p.status==='for_sale'?'selected':''}>למכירה</option>
+            <option value="owned" ${p.status==='owned'?'selected':''}>בבעלות</option>
+          </select>
+        </div>
+
+        <div class="modal-title" style="font-size:0.85rem;color:var(--muted);margin-top:4px">🔑 פרטי שוכר</div>
+        <div class="form-group">
+          <label>שם שוכר</label>
+          <input type="text" id="ep-tenant-name" value="${esc(tenant.name||'')}" placeholder="שם מלא" />
+        </div>
+        <div class="form-group">
+          <label>טלפון</label>
+          <input type="tel" id="ep-tenant-phone" value="${esc(tenant.phone||'')}" placeholder="050-0000000" />
+        </div>
+        <div class="form-group">
+          <label>תחילת שכירות</label>
+          <input type="date" id="ep-tenant-start" value="${tenant.startDate||''}" />
+        </div>
+        <div class="form-group">
+          <label>סיום שכירות</label>
+          <input type="date" id="ep-tenant-end" value="${tenant.endDate||''}" />
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('edit-prop-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitEditProperty('${esc(currency)}')">שמור</button>
+        </div>
+      </div>
     </div>`;
 
 }
@@ -501,26 +551,28 @@ function renderExpenses() {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) { goBack(); return ''; }
 
-  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  const currency = country?.currency || p.currency || 'USD';
+  const curSym = CURRENCIES[currency] || currency;
   const catMap = {
-    maintenance:  { label: '🔧 תחזוקה',           items: p.maintenance || [] },
-    improvements: { label: '🏗️ שיפורים',           items: p.improvements || [] },
-    oneTime:      { label: '💸 הוצאות חד-פעמיות', items: p.oneTimeExpenses || [] },
-    tax:          { label: '🏛️ מיסים',             items: p.tax?.payments || [] },
-    brokerage:    { label: '🤝 תיווך',             items: p.brokerages || [] },
+    maintenance:  { label: '🔧 תחזוקה',           key: 'maintenance',      items: p.maintenance || [] },
+    improvements: { label: '🏗️ שיפורים',           key: 'improvements',     items: p.improvements || [] },
+    oneTime:      { label: '💸 הוצאות חד-פעמיות', key: 'oneTimeExpenses',  items: p.oneTimeExpenses || [] },
+    tax:          { label: '🏛️ מיסים',             key: 'tax',              items: p.tax?.payments || [] },
+    brokerage:    { label: '🤝 תיווך',             key: 'brokerages',       items: p.brokerages || [] },
   };
   const cat = catMap[state.expenseCategory];
   if (!cat) { goBack(); return ''; }
 
   const items = [...cat.items].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const total = items.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return `
     <div class="page">
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ חזור</button>
         <div class="top-bar-title">${cat.label}</div>
-        <div style="width:60px"></div>
+        <button class="icon-btn" onclick="showModal('exp-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
         <div class="value-tile" style="background:var(--surface)">
@@ -544,6 +596,28 @@ function renderExpenses() {
       </div>
       <div class="bottom-bar">
         <span class="user-chip">${items.length} פריטים</span>
+      </div>
+    </div>
+
+    <div id="exp-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('exp-modal')">
+      <div class="modal-card">
+        <div class="modal-title">➕ הוסף הוצאה</div>
+        <div class="form-group">
+          <label>תיאור</label>
+          <input type="text" id="exp-desc" placeholder="תיאור ההוצאה" />
+        </div>
+        <div class="form-group">
+          <label>סכום (${curSym})</label>
+          <input type="number" id="exp-amount" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>תאריך</label>
+          <input type="date" id="exp-date" value="${todayStr}" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('exp-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitExpense('${esc(currency)}','${esc(cat.key)}')">שמור</button>
+        </div>
       </div>
     </div>`;
 }
@@ -797,6 +871,54 @@ async function saveData() {
 // ===== MODAL =====
 function showModal(id) { document.getElementById(id)?.classList.add('show'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+
+async function submitEditProperty(currency) {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const rate = rates[currency] || 1;
+  const toUSD = v => v ? parseFloat(v) / rate : undefined;
+  const cv = toUSD(document.getElementById('ep-value').value);
+  const mr = toUSD(document.getElementById('ep-rent').value);
+  if (cv) p.currentValue = cv;
+  if (mr) p.monthlyRent = mr;
+  p.status = document.getElementById('ep-status').value;
+  if (!p.tenantInfo) p.tenantInfo = {};
+  p.tenantInfo.name  = document.getElementById('ep-tenant-name').value.trim();
+  p.tenantInfo.phone = document.getElementById('ep-tenant-phone').value.trim();
+  p.tenantInfo.startDate = document.getElementById('ep-tenant-start').value || undefined;
+  p.tenantInfo.endDate   = document.getElementById('ep-tenant-end').value || undefined;
+  closeModal('edit-prop-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ נשמר');
+  render();
+}
+
+async function submitExpense(currency, catKey) {
+  const desc = document.getElementById('exp-desc').value.trim();
+  const amountLocal = parseFloat(document.getElementById('exp-amount').value);
+  const date = document.getElementById('exp-date').value;
+  if (!desc || !amountLocal || amountLocal <= 0) { toast('נא למלא תיאור וסכום'); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const amountUSD = amountLocal / (rates[currency] || 1);
+  const entry = { id: uid(), description: desc, amount: amountUSD, date: date || new Date().toISOString().slice(0,10) };
+  if (catKey === 'tax') {
+    if (!p.tax) p.tax = { payments: [] };
+    if (!p.tax.payments) p.tax.payments = [];
+    p.tax.payments.push(entry);
+  } else {
+    if (!p[catKey]) p[catKey] = [];
+    p[catKey].push(entry);
+  }
+  closeModal('exp-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ נשמר');
+  render();
+}
 
 async function submitRentPayment(currency) {
   const month = document.getElementById('rent-month').value;

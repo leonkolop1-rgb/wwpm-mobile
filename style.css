@@ -91,6 +91,19 @@ html, body {
   transition: border-color 0.15s;
 }
 .form-group input:focus { border-color: var(--accent); }
+.form-group select {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 1rem;
+  padding: 13px 14px;
+  outline: none;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.form-group select:focus { border-color: var(--accent); }
 
 .login-error {
   background: rgba(239,68,68,0.1);
