@@ -430,6 +430,12 @@ function renderProperty() {
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
 
+        <!-- DEBUG -->
+        <div class="detail-card" style="border-color:var(--warning)">
+          <div class="detail-card-title" style="color:var(--warning)">🔍 DEBUG — מבנה נתונים</div>
+          <pre style="font-size:0.65rem;color:var(--muted);overflow-x:auto;white-space:pre-wrap;direction:ltr">${esc(JSON.stringify(p, null, 2))}</pre>
+        </div>
+
       </div>
     </div>`;
 }
