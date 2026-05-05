@@ -577,21 +577,22 @@ function renderAnalytics() {
   const countries = state.data?.countries || [];
   const allProps  = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _country: c.name })));
 
-  const totalValue    = allProps.reduce((s, p) => s + (p.currentValue || 0), 0);
-  const totalInvested = allProps.reduce((s, p) => s + (p.purchasePrice || 0), 0);
-  const monthlyRent   = allProps.reduce((s, p) => s + (p.monthlyRent || 0), 0);
-  const totalExpenses = allProps.reduce((s, p) => s + [
-    ...(p.maintenance || []), ...(p.improvements || []),
-    ...(p.oneTimeExpenses || []), ...(p.tax?.payments || []), ...(p.brokerages || []),
-  ].reduce((es, e) => es + (Number(e.amount) || 0), 0), 0);
-  const paperProfit   = totalValue - totalInvested;
-  const today         = new Date();
-  const totalMonthlyMortgage = allProps.reduce((s, p) =>
-    s + (p.mortgages || []).filter(m => m.endDate && new Date(m.endDate) > today)
-      .reduce((ms, m) => ms + (Number(m.monthlyPayment) || 0), 0), 0);
+  const today = new Date();
+  const getCur = p => p.currency || [...(p.rentHistory || [])].find(r => r.paymentCurrency)?.paymentCurrency || 'ILS';
 
-  // Pick dominant currency per country
-  const getCur = p => p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  // Group by currency
+  const byCurrency = {};
+  for (const p of allProps) {
+    const cur = getCur(p);
+    if (!byCurrency[cur]) byCurrency[cur] = { value: 0, invested: 0, rent: 0, expenses: 0, mortgage: 0 };
+    byCurrency[cur].value    += p.currentValue || 0;
+    byCurrency[cur].invested += p.purchasePrice || 0;
+    byCurrency[cur].rent     += p.monthlyRent || 0;
+    byCurrency[cur].expenses += [...(p.maintenance||[]),...(p.improvements||[]),...(p.oneTimeExpenses||[]),...(p.tax?.payments||[]),...(p.brokerages||[])]
+      .reduce((s,e) => s + (Number(e.amount)||0), 0);
+    byCurrency[cur].mortgage += (p.mortgages||[]).filter(m => m.endDate && new Date(m.endDate) > today)
+      .reduce((s, m) => s + (Number(m.monthlyPayment)||0), 0);
+  }
 
   // Sort properties by value desc
   const topProps = [...allProps].sort((a, b) => (b.currentValue || 0) - (a.currentValue || 0));
@@ -615,20 +616,16 @@ function renderAnalytics() {
         <!-- Summary -->
         <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
 
-        <div class="values-grid">
-          ${statTile('שווי נכסים כיום', allProps.length ? '~' + fmtCurrency(Math.round(totalValue / allProps.length), getCur(allProps[0])) + '/נכס' : '—')}
-          ${statTile('רווח נייר כולל', fmtCurrency(Math.round(paperProfit), allProps[0] ? getCur(allProps[0]) : 'ILS'), paperProfit >= 0 ? 'var(--success)' : 'var(--danger)')}
-        </div>
-
+        ${Object.entries(byCurrency).map(([cur, d]) => `
         <div class="detail-card">
-          <div class="detail-card-title">💰 פיננסי</div>
-          <div class="detail-row"><span class="detail-label">שווי נכסים כיום</span><span class="detail-value">${fmtCurrency(Math.round(totalValue), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
-          <div class="detail-row"><span class="detail-label">סך ההשקעה</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(totalInvested), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
-          <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${paperProfit>=0?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(paperProfit), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
-          <div class="detail-row"><span class="detail-label">הכנסת שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(monthlyRent), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>
-          ${totalMonthlyMortgage ? `<div class="detail-row"><span class="detail-label">תשלומי משכנתא/חודש</span><span class="detail-value" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>` : ''}
-          ${totalExpenses ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">${fmtCurrency(Math.round(totalExpenses), allProps[0] ? getCur(allProps[0]) : 'ILS')}</span></div>` : ''}
-        </div>
+          <div class="detail-card-title">💰 ${cur} ${(CURRENCIES[cur]||cur)}</div>
+          <div class="detail-row"><span class="detail-label">שווי נכסים כיום</span><span class="detail-value">${fmtCurrency(Math.round(d.value), cur)}</span></div>
+          <div class="detail-row"><span class="detail-label">סך ההשקעה</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(d.invested), cur)}</span></div>
+          <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${d.value>=d.invested?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(d.value-d.invested), cur)}</span></div>
+          <div class="detail-row"><span class="detail-label">שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(d.rent), cur)}</span></div>
+          ${d.mortgage ? `<div class="detail-row"><span class="detail-label">משכנתא/חודש</span><span class="detail-value" style="color:var(--warning)">${fmtCurrency(Math.round(d.mortgage), cur)}</span></div>` : ''}
+          ${d.expenses ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">${fmtCurrency(Math.round(d.expenses), cur)}</span></div>` : ''}
+        </div>`).join('')}
 
         <!-- Per country -->
         <div class="section-label">לפי מדינה</div>
