@@ -62,6 +62,7 @@ const state = {
   loading: false,
   error: null,
   currentCountryId: null,
+  currentPropertyId: null,
 };
 
 // restore session
@@ -189,6 +190,8 @@ function render() {
     app.innerHTML = renderHome();
   } else if (state.view === 'country') {
     app.innerHTML = renderCountry();
+  } else if (state.view === 'property') {
+    app.innerHTML = renderProperty();
   }
 }
 
@@ -320,6 +323,117 @@ function renderPropertyCard(p) {
     </div>`;
 }
 
+function renderProperty() {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) { goBack(); return ''; }
+
+  const statusMap = { rented:'status_rented', owned:'status_owned', for_sale:'status_for_sale', empty:'status_empty' };
+  const typeMap   = { apartment:'type_apartment', house:'type_house', commercial:'type_commercial', land:'type_land', parking:'type_parking', storage:'type_storage' };
+  const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
+  const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
+
+  // Mortgage summary
+  const mortgages = p.mortgages || [];
+  const today = new Date();
+  const activeMortgages = mortgages.filter(m => {
+    if (!m.startDate || !m.months) return false;
+    const end = new Date(m.startDate);
+    end.setMonth(end.getMonth() + Number(m.months));
+    return end > today;
+  });
+  const totalMonthlyMortgage = activeMortgages.reduce((s, m) => s + (Number(m.monthlyPayment) || 0), 0);
+
+  // Expenses total
+  const allExpenses = [
+    ...(p.expenses?.maintenance || []),
+    ...(p.expenses?.tax || []),
+    ...(p.expenses?.insurance || []),
+    ...(p.expenses?.renovation || []),
+    ...(p.expenses?.other || []),
+    ...(p.brokerages || []),
+  ];
+  const totalExpenses = allExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+  const row = (label, value, color = '') => value ? `
+    <div class="detail-row">
+      <span class="detail-label">${label}</span>
+      <span class="detail-value" ${color ? `style="color:${color}"` : ''}>${value}</span>
+    </div>` : '';
+
+  return `
+    <div class="page">
+      <header class="top-bar">
+        <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
+        <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.city || '—')}</div>
+        <div style="width:60px"></div>
+      </header>
+
+      <div class="content">
+
+        <!-- Status + Type badges -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${p.status ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor};padding:5px 14px;font-size:0.8rem">${t(statusMap[p.status]||p.status)}</span>` : ''}
+          ${p.type ? `<span class="prop-badge" style="color:var(--accent);border-color:var(--accent);padding:5px 14px;font-size:0.8rem">${t(typeMap[p.type]||p.type)}</span>` : ''}
+          ${pct !== 100 ? `<span class="prop-badge" style="color:var(--muted);border-color:var(--border);padding:5px 14px;font-size:0.8rem">👤 ${pct}%</span>` : ''}
+        </div>
+
+        <!-- Main values -->
+        <div class="values-grid">
+          ${p.currentValue ? `<div class="value-tile"><div class="value-tile-label">${t('current_value')}</div><div class="value-tile-num">${fmtCurrency(p.currentValue, p.currency)}</div></div>` : ''}
+          ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, p.currency)}</div></div>` : ''}
+          ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, p.currency)}</div></div>` : ''}
+          ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא חודשית</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(totalMonthlyMortgage, p.currency)}</div></div>` : ''}
+        </div>
+
+        <!-- Property details -->
+        <div class="detail-card">
+          ${row('📍 עיר', p.city)}
+          ${row('📐 שטח', p.area ? `${p.area} מ"ר` : '')}
+          ${row('🏢 קומה', p.floor != null ? String(p.floor) : '')}
+          ${row('🛏️ חדרים', p.rooms ? String(p.rooms) : '')}
+          ${row('🌍 מדינה', country?.name)}
+        </div>
+
+        <!-- Tenant info -->
+        ${p.status === 'rented' && (p.tenantName || p.leaseEnd) ? `
+        <div class="detail-card">
+          <div class="detail-card-title">🔑 פרטי שוכר</div>
+          ${row('שם שוכר', p.tenantName)}
+          ${row('תחילת שכירות', p.leaseStart ? new Date(p.leaseStart).toLocaleDateString('he-IL') : '')}
+          ${row('סיום שכירות', p.leaseEnd ? new Date(p.leaseEnd).toLocaleDateString('he-IL') : '')}
+        </div>` : ''}
+
+        <!-- Mortgages -->
+        ${activeMortgages.length ? `
+        <div class="detail-card">
+          <div class="detail-card-title">🏦 משכנתאות פעילות (${activeMortgages.length})</div>
+          ${activeMortgages.map(m => `
+            <div class="mortgage-row">
+              <span>${m.bankName || 'בנק'}</span>
+              <span style="color:var(--warning);font-weight:700">${fmtCurrency(m.monthlyPayment, p.currency)}/חודש</span>
+            </div>`).join('')}
+        </div>` : ''}
+
+        <!-- Financials -->
+        ${totalExpenses ? `
+        <div class="detail-card">
+          <div class="detail-card-title">💰 סיכום פיננסי</div>
+          ${row('סך הוצאות', fmtCurrency(totalExpenses, p.currency), 'var(--danger)')}
+          ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(p.currentValue - p.purchasePrice, p.currency), p.currentValue > p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
+        </div>` : ''}
+
+        <!-- Notes -->
+        ${p.notes ? `
+        <div class="detail-card">
+          <div class="detail-card-title">📝 הערות</div>
+          <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
+        </div>` : ''}
+
+      </div>
+    </div>`;
+}
+
 function renderCountryCard(c) {
   const props = c.properties || [];
   const currency = props[0]?.currency || 'USD';
@@ -423,8 +537,10 @@ function goBack() {
 }
 
 function goToProperty(id) {
-  // Step 3 — coming soon
-  toast('בקרוב — שלב 3 🚀');
+  state.currentPropertyId = id;
+  state.view = 'property';
+  render();
+  window.scrollTo(0, 0);
 }
 
 // ===== INIT =====
