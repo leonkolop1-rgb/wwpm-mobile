@@ -159,6 +159,7 @@ const STRINGS = {
 function t(key) { return (STRINGS[state.lang] || STRINGS.heb)[key] || key; }
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt(n, sym = '') { return n ? `${sym}${Number(n).toLocaleString()}` : '—'; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
 const CURRENCIES = { USD: '$', EUR: '€', GBP: '£', ILS: '₪', GEL: '₾', AED: 'د.إ' };
 function fmtCurrency(amountUSD, cur = 'USD') {
@@ -552,7 +553,8 @@ function renderRentHistory() {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) { goBack(); return ''; }
 
-  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  const currency = country?.currency || p.currency || 'USD';
+  const nowMonth = new Date().toISOString().slice(0, 7);
   const items = [...(p.rentHistory || [])]
     .filter(r => !r.autoFilled)
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -563,7 +565,7 @@ function renderRentHistory() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ חזור</button>
         <div class="top-bar-title">💵 היסטוריית שכירות</div>
-        <div style="width:60px"></div>
+        <button class="icon-btn" onclick="showModal('rent-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
         <div class="values-grid">
@@ -576,6 +578,7 @@ function renderRentHistory() {
             <div class="value-tile-num">${items.length}</div>
           </div>
         </div>
+        ${items.length === 0 ? `<div class="empty-state"><div class="empty-icon">💵</div><div class="empty-text">אין תשלומים עדיין</div></div>` : ''}
         ${items.map(r => `
           <div class="detail-card" style="padding:12px 16px">
             <div style="display:flex;justify-content:space-between;align-items:center">
@@ -583,6 +586,24 @@ function renderRentHistory() {
               <span style="color:var(--success);font-weight:700;direction:ltr">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
             </div>
           </div>`).join('')}
+      </div>
+    </div>
+
+    <div id="rent-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('rent-modal')">
+      <div class="modal-card">
+        <div class="modal-title">💵 הוסף תשלום שכירות</div>
+        <div class="form-group">
+          <label>חודש</label>
+          <input type="month" id="rent-month" value="${nowMonth}" />
+        </div>
+        <div class="form-group">
+          <label>סכום (${CURRENCIES[currency] || currency})</label>
+          <input type="number" id="rent-amount" placeholder="0" inputmode="numeric" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('rent-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitRentPayment('${esc(currency)}')">שמור</button>
+        </div>
       </div>
     </div>`;
 }
@@ -762,6 +783,36 @@ async function loadUserData() {
   }
   fetchRates();
   state.view = 'home';
+  render();
+}
+
+async function saveData() {
+  try {
+    await sb.upsert('user_data', { username: state.currentUser, data: state.data });
+  } catch {
+    toast('שגיאה בשמירה');
+  }
+}
+
+// ===== MODAL =====
+function showModal(id) { document.getElementById(id)?.classList.add('show'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+
+async function submitRentPayment(currency) {
+  const month = document.getElementById('rent-month').value;
+  const amountLocal = parseFloat(document.getElementById('rent-amount').value);
+  if (!month || !amountLocal || amountLocal <= 0) { toast('נא למלא חודש וסכום'); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const amountUSD = amountLocal / (rates[currency] || 1);
+  if (!p.rentHistory) p.rentHistory = [];
+  p.rentHistory = p.rentHistory.filter(r => r.month !== month || r.autoFilled);
+  p.rentHistory.push({ id: uid(), month, amount: amountUSD, paymentCurrency: currency, autoFilled: false });
+  closeModal('rent-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ נשמר');
   render();
 }
 

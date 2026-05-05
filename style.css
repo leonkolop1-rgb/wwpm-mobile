@@ -428,3 +428,40 @@ html, body {
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 500;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px 22px 0 0;
+  padding: 24px 20px;
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-title { font-size: 1rem; font-weight: 700; text-align: center; margin-bottom: 2px; }
+.btn-secondary {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
