@@ -46,6 +46,18 @@ const sb = {
   },
 };
 
+// ===== EXCHANGE RATES =====
+const FALLBACK_RATES = { USD: 1, EUR: 0.92, ILS: 3.75, GEL: 2.70, GBP: 0.79, AED: 3.67 };
+let rates = { ...FALLBACK_RATES };
+
+async function fetchRates() {
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,EUR,GBP,GEL,AED');
+    const j = await r.json();
+    if (j?.rates) rates = { USD: 1, ...j.rates };
+  } catch { /* use fallback */ }
+}
+
 // ===== HASH =====
 async function hashPassword(password) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password + 'wwpm-salt'));
@@ -149,9 +161,11 @@ function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt
 function fmt(n, sym = '') { return n ? `${sym}${Number(n).toLocaleString()}` : '—'; }
 
 const CURRENCIES = { USD: '$', EUR: '€', GBP: '£', ILS: '₪', GEL: '₾', AED: 'د.إ' };
-function fmtCurrency(n, cur = 'USD') {
-  if (!n) return '—';
-  return (CURRENCIES[cur] || cur) + Number(n).toLocaleString();
+function fmtCurrency(amountUSD, cur = 'USD') {
+  if (!amountUSD) return '—';
+  const rate = rates[cur] || 1;
+  const n = Math.round(Number(amountUSD) * rate);
+  return (CURRENCIES[cur] || cur) + n.toLocaleString();
 }
 
 const FLAGS = {
@@ -337,7 +351,7 @@ function renderProperty() {
   if (!p) { goBack(); return ''; }
 
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
-  const currency = p.currency || (p.rentHistory || [])[0]?.paymentCurrency || 'ILS';
+  const currency = country?.currency || p.currency || 'USD';
 
   // Expenses
   const maintenance  = p.maintenance || [];
@@ -575,10 +589,10 @@ function renderRentHistory() {
 
 function renderAnalytics() {
   const countries = state.data?.countries || [];
-  const allProps  = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _country: c.name })));
+  const allProps  = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _country: c.name, _currency: c.currency || 'USD' })));
 
   const today = new Date();
-  const getCur = p => p.currency || [...(p.rentHistory || [])].find(r => r.paymentCurrency)?.paymentCurrency || 'ILS';
+  const getCur = p => p._currency || p.currency || 'USD';
 
   // Group by currency
   const byCurrency = {};
@@ -634,7 +648,7 @@ function renderAnalytics() {
           const val   = props.reduce((s, p) => s + (p.currentValue || 0), 0);
           const inv   = props.reduce((s, p) => s + (p.purchasePrice || 0), 0);
           const rent  = props.reduce((s, p) => s + (p.monthlyRent || 0), 0);
-          const cur   = props[0] ? getCur(props[0]) : 'ILS';
+          const cur   = c.currency || (props[0] ? getCur(props[0]) : 'USD');
           const flag  = FLAGS[c.name] || '🌍';
           return `
             <div class="detail-card">
@@ -669,7 +683,7 @@ function renderAnalytics() {
 
 function renderCountryCard(c) {
   const props = c.properties || [];
-  const currency = props[0]?.currency || 'USD';
+  const currency = c.currency || props[0]?.currency || 'USD';
   const totalValue = props.reduce((s, p) => s + (p.currentValue || 0), 0);
   const flag = FLAGS[c.name] || '🌍';
   return `
@@ -746,6 +760,7 @@ async function loadUserData() {
   } catch {
     state.data = { countries: [] };
   }
+  fetchRates();
   state.view = 'home';
   render();
 }
