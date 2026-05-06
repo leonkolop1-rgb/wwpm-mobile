@@ -466,6 +466,42 @@ html, body {
   gap: 14px;
 }
 .modal-title { font-size: 1rem; font-weight: 700; text-align: center; margin-bottom: 2px; }
+/* ===== FILES ===== */
+.file-input {
+  background: var(--surface2);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  width: 100%;
+  cursor: pointer;
+}
+.file-chip {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.file-chip:active { opacity: 0.7; }
+.file-add-btn {
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .btn-secondary {
   flex: 1;
   background: var(--surface2);

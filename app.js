@@ -44,6 +44,18 @@ const sb = {
     if (!r.ok) throw new Error(await r.text());
     return r.json();
   },
+  async upload(path, file) {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/wwpm-files/${path}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
+      body: file,
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  publicUrl(path) {
+    return `${SUPABASE_URL}/storage/v1/object/public/wwpm-files/${path}`;
+  },
 };
 
 // ===== EXCHANGE RATES =====
@@ -550,14 +562,17 @@ function renderProperty() {
           </div>
           ${activeMortgages.length === 0 ? `<div style="font-size:0.85rem;color:var(--muted);text-align:center;padding:8px 0">אין משכנתאות פעילות</div>` : ''}
           ${activeMortgages.map(m => `
-            <div class="mortgage-row">
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600">${esc(m.name || m.lender || 'משכנתא')}</div>
-                ${m.lender ? `<div style="font-size:0.75rem;color:var(--muted)">${esc(m.lender)}</div>` : ''}
-                ${m.endDate ? `<div style="font-size:0.72rem;color:var(--muted)">עד ${m.endDate}</div>` : ''}
+            <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+              <div class="mortgage-row" style="border:none;padding:0">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600">${esc(m.name || m.lender || 'משכנתא')}</div>
+                  ${m.lender ? `<div style="font-size:0.75rem;color:var(--muted)">${esc(m.lender)}</div>` : ''}
+                  ${m.endDate ? `<div style="font-size:0.72rem;color:var(--muted)">עד ${m.endDate}</div>` : ''}
+                </div>
+                <span style="color:var(--warning);font-weight:700;white-space:nowrap">${fmtCurrency(Math.round(m.monthlyPayment), currency)}/חודש</span>
+                <button onclick="deleteMortgage('${esc(m.id)}')" style="background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
               </div>
-              <span style="color:var(--warning);font-weight:700;white-space:nowrap">${fmtCurrency(Math.round(m.monthlyPayment), currency)}/חודש</span>
-              <button onclick="deleteMortgage('${esc(m.id)}')" style="background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
+              ${renderFileList(m.files || [], 'mortgages', m.id)}
             </div>`).join('')}
         </div>
 
@@ -624,6 +639,10 @@ function renderProperty() {
         <div class="form-group">
           <label>תאריך סיום</label>
           <input type="date" id="mort-end" />
+        </div>
+        <div class="form-group">
+          <label>קבצים מצורפים (חוזה, אישורים)</label>
+          <input type="file" id="mort-files" multiple accept="image/*,.pdf,.doc,.docx" class="file-input" />
         </div>
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('add-mort-modal')">ביטול</button>
@@ -726,6 +745,7 @@ function renderExpenses() {
                 <span style="color:var(--danger);font-weight:700;font-size:1rem;white-space:nowrap;direction:ltr">${fmtCurrency(Math.round(e.amount), currency)}</span>
                 <button onclick="deleteExpenseItem('${esc(cat.key)}','${esc(e.id)}')" style="background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
               </div>
+              ${renderFileList(e.files || [], cat.key, e.id)}
             </div>`).join('')
         }
       </div>
@@ -748,6 +768,10 @@ function renderExpenses() {
         <div class="form-group">
           <label>תאריך</label>
           <input type="date" id="exp-date" value="${todayStr}" />
+        </div>
+        <div class="form-group">
+          <label>קבצים מצורפים (אופציונלי)</label>
+          <input type="file" id="exp-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" class="file-input" />
         </div>
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('exp-modal')">ביטול</button>
@@ -1004,6 +1028,55 @@ async function saveData() {
   }
 }
 
+// ===== FILE UPLOAD =====
+async function uploadFiles(files, pathPrefix) {
+  const results = [];
+  for (const file of files) {
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+    const path = `${pathPrefix}/${uid()}.${ext}`;
+    await sb.upload(path, file);
+    results.push({ name: file.name, url: sb.publicUrl(path), path });
+  }
+  return results;
+}
+
+function renderFileList(files = [], catKey = '', itemId = '') {
+  const sym = files.length || catKey ? '' : '';
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center">
+    ${files.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="file-chip">📎 ${esc(f.name)}</a>`).join('')}
+    ${catKey ? `<button onclick="attachFile('${esc(catKey)}','${esc(itemId)}')" class="file-add-btn">＋ קובץ</button>` : ''}
+  </div>`;
+}
+
+function attachFile(catKey, itemId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx';
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    toast('מעלה קבצים...');
+    try {
+      const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+      const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+      if (!p) return;
+      const pathPrefix = `${state.currentUser}/${p.id}/${catKey}/${itemId}`;
+      const uploaded = await uploadFiles(Array.from(input.files), pathPrefix);
+      let item;
+      if (catKey === 'mortgages') item = (p.mortgages || []).find(m => m.id === itemId);
+      else if (catKey === 'tax') item = (p.tax?.payments || []).find(e => e.id === itemId);
+      else item = (p[catKey] || []).find(e => e.id === itemId);
+      if (!item) return;
+      if (!item.files) item.files = [];
+      item.files.push(...uploaded);
+      await saveData();
+      toast('✓ הקובץ הועלה');
+      render();
+    } catch { toast('שגיאה בהעלאת הקובץ'); }
+  };
+  input.click();
+}
+
 // ===== MODAL =====
 function showModal(id) { document.getElementById(id)?.classList.add('show'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
@@ -1060,7 +1133,7 @@ async function submitAddMortgage(currency) {
   if (!p) return;
   const rate = rates[currency] || 1;
   if (!p.mortgages) p.mortgages = [];
-  p.mortgages.push({
+  const mort = {
     id: uid(),
     name,
     lender:         document.getElementById('mort-lender').value.trim() || '',
@@ -1068,7 +1141,16 @@ async function submitAddMortgage(currency) {
     interestRate:   parseFloat(document.getElementById('mort-rate').value) || 0,
     startDate:      document.getElementById('mort-start').value || '',
     endDate:        document.getElementById('mort-end').value || '',
-  });
+    files: [],
+  };
+  const fileInput = document.getElementById('mort-files');
+  if (fileInput?.files?.length) {
+    try {
+      toast('מעלה קבצים...');
+      mort.files = await uploadFiles(Array.from(fileInput.files), `${state.currentUser}/${p.id}/mortgages/${mort.id}`);
+    } catch { toast('שגיאה בהעלאה — ממשיך בלי קבצים'); }
+  }
+  p.mortgages.push(mort);
   closeModal('add-mort-modal');
   toast('שומר...');
   await saveData();
@@ -1177,7 +1259,15 @@ async function submitExpense(currency, catKey) {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) return;
   const amountUSD = amountLocal / (rates[currency] || 1);
-  const entry = { id: uid(), description: desc, amount: amountUSD, date: date || new Date().toISOString().slice(0,10) };
+  const entry = { id: uid(), description: desc, amount: amountUSD, date: date || new Date().toISOString().slice(0,10), files: [] };
+  const fileInput = document.getElementById('exp-files');
+  if (fileInput?.files?.length) {
+    try {
+      toast('מעלה קבצים...');
+      const uploaded = await uploadFiles(Array.from(fileInput.files), `${state.currentUser}/${p.id}/${catKey}/${entry.id}`);
+      entry.files = uploaded;
+    } catch { toast('שגיאה בהעלאה — ממשיך בלי קבצים'); }
+  }
   if (catKey === 'tax') {
     if (!p.tax) p.tax = { payments: [] };
     if (!p.tax.payments) p.tax.payments = [];
