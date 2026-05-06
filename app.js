@@ -345,10 +345,10 @@ function renderCountry() {
           ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
           : props.map(p => renderPropertyCard(p, currency)).join('')
         }
+        <button onclick="deleteCountry('${esc(country.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק מדינה</button>
       </div>
-      <div class="bottom-bar" style="justify-content:space-between">
+      <div class="bottom-bar">
         <span class="user-chip">${props.length} ${t('properties')}</span>
-        <button onclick="deleteCountry('${esc(country.id)}')" style="background:none;border:none;color:var(--danger);font-size:0.78rem;font-weight:600;cursor:pointer;opacity:0.6;padding:4px 8px">🗑 מחק מדינה</button>
       </div>
     </div>
 
