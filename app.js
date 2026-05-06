@@ -346,8 +346,9 @@ function renderCountry() {
           : props.map(p => renderPropertyCard(p, currency)).join('')
         }
       </div>
-      <div class="bottom-bar">
+      <div class="bottom-bar" style="justify-content:space-between">
         <span class="user-chip">${props.length} ${t('properties')}</span>
+        <button onclick="deleteCountry('${esc(country.id)}')" style="background:none;border:none;color:var(--danger);font-size:0.78rem;font-weight:600;cursor:pointer;opacity:0.6;padding:4px 8px">🗑 מחק מדינה</button>
       </div>
     </div>
 
@@ -516,7 +517,10 @@ function renderProperty() {
 
         <!-- Main values -->
         <div class="values-grid">
-          ${p.currentValue ? `<div class="value-tile"><div class="value-tile-label">${t('current_value')}</div><div class="value-tile-num">${fmtCurrency(Math.round(p.currentValue), currency)}</div></div>` : ''}
+          <div class="value-tile" onclick="showModal('update-val-modal')" style="cursor:pointer;position:relative">
+            <div class="value-tile-label">${t('current_value')} ✏️</div>
+            <div class="value-tile-num">${p.currentValue ? fmtCurrency(Math.round(p.currentValue), currency) : '—'}</div>
+          </div>
           ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
           ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא/חודש</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), currency)}</div></div>` : ''}
@@ -594,12 +598,11 @@ function renderProperty() {
           ${brokerages.length ? `<div class="expense-cat-row" onclick="goToExpenses('brokerage')"><span>🤝 תיווך</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(brokerages.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
         </div>` : ''}
 
-        <!-- Rent history shortcut -->
-        ${rentHistory.length ? `
+        <!-- Rent history shortcut — always visible -->
         <div class="expense-cat-row" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:0" onclick="goToRentHistory()">
           <span>💵 היסטוריית שכירות</span>
           <span class="expense-cat-right"><span style="color:var(--muted)">${(p.rentHistory||[]).filter(r=>!r.autoFilled).length} תשלומים</span><span class="chevron">›</span></span>
-        </div>` : ''}
+        </div>
 
         <!-- Notes -->
         ${p.notes ? `
@@ -610,6 +613,24 @@ function renderProperty() {
 
         <button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>
 
+      </div>
+    </div>
+
+    <div id="update-val-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('update-val-modal')">
+      <div class="modal-card">
+        <div class="modal-title">📈 עדכון שווי נכס</div>
+        <div class="form-group">
+          <label>שווי נוכחי (${curSym})</label>
+          <input type="number" id="uv-value" value="${fromUSDDisplay(p.currentValue)}" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>תאריך הערכה</label>
+          <input type="date" id="uv-date" value="${new Date().toISOString().slice(0,10)}" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('update-val-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitUpdateValue('${esc(currency)}')">שמור</button>
+        </div>
       </div>
     </div>
 
@@ -689,6 +710,12 @@ function renderProperty() {
         <div class="form-group">
           <label>סיום שכירות</label>
           <input type="date" id="ep-tenant-end" value="${tenant.endDate||''}" />
+        </div>
+
+        <div class="modal-title" style="font-size:0.85rem;color:var(--muted);margin-top:4px">📝 הערות</div>
+        <div class="form-group">
+          <label>הערות כלליות</label>
+          <textarea id="ep-notes" rows="3" placeholder="הערות על הנכס..." style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:1rem;padding:13px 14px;outline:none;width:100%;resize:none;font-family:inherit">${esc(p.notes||'')}</textarea>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:4px">
@@ -1112,6 +1139,22 @@ async function submitAddCountry() {
   render();
 }
 
+async function deleteCountry(countryId) {
+  const country = (state.data?.countries || []).find(c => c.id === countryId);
+  if (!country) return;
+  const propCount = (country.properties || []).length;
+  const msg = propCount > 0
+    ? `למחוק את "${country.name}"?\n${propCount} נכסים יימחקו לצמיתות.`
+    : `למחוק את "${country.name}"?`;
+  if (!confirm(msg)) return;
+  state.data.countries = state.data.countries.filter(c => c.id !== countryId);
+  toast('שומר...');
+  await saveData();
+  toast('✓ מדינה נמחקה');
+  state.view = 'home';
+  render();
+}
+
 async function deleteProperty(propId) {
   if (!confirm('למחוק נכס זה לצמיתות?')) return;
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
@@ -1121,6 +1164,24 @@ async function deleteProperty(propId) {
   await saveData();
   toast('✓ נכס נמחק');
   state.view = 'country';
+  render();
+}
+
+async function submitUpdateValue(currency) {
+  const val = parseFloat(document.getElementById('uv-value').value);
+  const date = document.getElementById('uv-date').value;
+  if (!val || val <= 0) { toast('נא למלא שווי'); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const rate = rates[currency] || 1;
+  p.currentValue = val / rate;
+  if (!p.valueHistory) p.valueHistory = [];
+  p.valueHistory.push({ id: uid(), date: date || new Date().toISOString().slice(0,10), value: p.currentValue });
+  closeModal('update-val-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ שווי עודכן');
   render();
 }
 
@@ -1243,6 +1304,8 @@ async function submitEditProperty(currency) {
   p.tenantInfo.phone = document.getElementById('ep-tenant-phone').value.trim();
   p.tenantInfo.startDate = document.getElementById('ep-tenant-start').value || undefined;
   p.tenantInfo.endDate   = document.getElementById('ep-tenant-end').value || undefined;
+  const notes = document.getElementById('ep-notes')?.value.trim();
+  if (notes !== undefined) p.notes = notes || undefined;
   closeModal('edit-prop-modal');
   toast('שומר...');
   await saveData();
