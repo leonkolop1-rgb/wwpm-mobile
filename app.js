@@ -543,18 +543,23 @@ function renderProperty() {
         </div>` : ''}
 
         <!-- Mortgages -->
-        ${activeMortgages.length ? `
         <div class="detail-card">
-          <div class="detail-card-title">🏦 משכנתאות פעילות (${activeMortgages.length})</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div class="detail-card-title" style="margin-bottom:0">🏦 משכנתאות${activeMortgages.length ? ` פעילות (${activeMortgages.length})` : ''}</div>
+            <button onclick="showModal('add-mort-modal')" style="background:none;border:none;color:var(--accent);font-size:1.4rem;cursor:pointer;padding:2px 6px;line-height:1">＋</button>
+          </div>
+          ${activeMortgages.length === 0 ? `<div style="font-size:0.85rem;color:var(--muted);text-align:center;padding:8px 0">אין משכנתאות פעילות</div>` : ''}
           ${activeMortgages.map(m => `
             <div class="mortgage-row">
-              <div>
+              <div style="flex:1;min-width:0">
                 <div style="font-weight:600">${esc(m.name || m.lender || 'משכנתא')}</div>
                 ${m.lender ? `<div style="font-size:0.75rem;color:var(--muted)">${esc(m.lender)}</div>` : ''}
+                ${m.endDate ? `<div style="font-size:0.72rem;color:var(--muted)">עד ${m.endDate}</div>` : ''}
               </div>
-              <span style="color:var(--warning);font-weight:700">${fmtCurrency(Math.round(m.monthlyPayment), currency)}/חודש</span>
+              <span style="color:var(--warning);font-weight:700;white-space:nowrap">${fmtCurrency(Math.round(m.monthlyPayment), currency)}/חודש</span>
+              <button onclick="deleteMortgage('${esc(m.id)}')" style="background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
             </div>`).join('')}
-        </div>` : ''}
+        </div>
 
         <!-- Financial summary -->
         <div class="detail-card">
@@ -590,6 +595,40 @@ function renderProperty() {
 
         <button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>
 
+      </div>
+    </div>
+
+    <div id="add-mort-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-mort-modal')">
+      <div class="modal-card" style="max-height:85dvh;overflow-y:auto">
+        <div class="modal-title">🏦 הוסף משכנתא</div>
+        <div class="form-group">
+          <label>שם ההלוואה *</label>
+          <input type="text" id="mort-name" placeholder="למשל: משכנתא ראשונה" />
+        </div>
+        <div class="form-group">
+          <label>בנק / מלווה</label>
+          <input type="text" id="mort-lender" placeholder="שם הבנק" />
+        </div>
+        <div class="form-group">
+          <label>תשלום חודשי (${curSym}) *</label>
+          <input type="number" id="mort-payment" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>ריבית שנתית (%)</label>
+          <input type="number" id="mort-rate" placeholder="3.5" step="0.1" inputmode="decimal" />
+        </div>
+        <div class="form-group">
+          <label>תאריך תחילה</label>
+          <input type="date" id="mort-start" />
+        </div>
+        <div class="form-group">
+          <label>תאריך סיום</label>
+          <input type="date" id="mort-end" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('add-mort-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitAddMortgage('${esc(currency)}')">שמור</button>
+        </div>
       </div>
     </div>
 
@@ -1009,6 +1048,43 @@ async function deleteProperty(propId) {
   await saveData();
   toast('✓ נכס נמחק');
   state.view = 'country';
+  render();
+}
+
+async function submitAddMortgage(currency) {
+  const name = document.getElementById('mort-name').value.trim();
+  const paymentLocal = parseFloat(document.getElementById('mort-payment').value);
+  if (!name || !paymentLocal || paymentLocal <= 0) { toast('נא למלא שם ותשלום חודשי'); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const rate = rates[currency] || 1;
+  if (!p.mortgages) p.mortgages = [];
+  p.mortgages.push({
+    id: uid(),
+    name,
+    lender:         document.getElementById('mort-lender').value.trim() || '',
+    monthlyPayment: paymentLocal / rate,
+    interestRate:   parseFloat(document.getElementById('mort-rate').value) || 0,
+    startDate:      document.getElementById('mort-start').value || '',
+    endDate:        document.getElementById('mort-end').value || '',
+  });
+  closeModal('add-mort-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ משכנתא נוספה');
+  render();
+}
+
+async function deleteMortgage(mortId) {
+  if (!confirm('למחוק משכנתא זו?')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  p.mortgages = (p.mortgages || []).filter(m => m.id !== mortId);
+  toast('שומר...');
+  await saveData();
+  toast('✓ נמחק');
   render();
 }
 
