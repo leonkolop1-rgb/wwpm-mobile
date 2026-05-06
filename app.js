@@ -264,6 +264,7 @@ function renderHome() {
       <header class="top-bar">
         <div class="top-bar-title">${t('my_countries')}</div>
         <div class="top-bar-actions">
+          <button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           <button class="icon-btn" onclick="cycleLang()" title="שפה">🌐</button>
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
@@ -277,6 +278,38 @@ function renderHome() {
       </div>
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.currentUser)}</span>
+      </div>
+    </div>
+
+    <div id="add-country-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-country-modal')">
+      <div class="modal-card">
+        <div class="modal-title">🌍 מדינה חדשה</div>
+        <div class="form-group">
+          <label>שם המדינה *</label>
+          <input type="text" id="nc-name" placeholder="למשל: ישראל" list="country-list" oninput="autoFillCountryCurrency(this.value)" />
+          <datalist id="country-list">
+            <option value="ישראל"><option value="גאורגיה"><option value="ספרד"><option value="פורטוגל">
+            <option value="יוון"><option value="קפריסין"><option value="גרמניה"><option value="איטליה">
+            <option value="צרפת"><option value="הולנד"><option value="דובאי"><option value='ארה"ב'>
+            <option value="Israel"><option value="Georgia"><option value="Spain"><option value="Portugal">
+            <option value="USA"><option value="UAE"><option value="Germany"><option value="France">
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>מטבע</label>
+          <select id="nc-currency">
+            <option value="ILS">₪ שקל (ILS)</option>
+            <option value="USD">$ דולר (USD)</option>
+            <option value="EUR">€ יורו (EUR)</option>
+            <option value="GBP">£ פאונד (GBP)</option>
+            <option value="GEL">₾ לארי (GEL)</option>
+            <option value="AED">د.إ דירהם (AED)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('add-country-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitAddCountry()">הוסף מדינה</button>
+        </div>
       </div>
     </div>`;
 }
@@ -554,6 +587,8 @@ function renderProperty() {
           <div class="detail-card-title">📝 הערות</div>
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
+
+        <button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>
 
       </div>
     </div>
@@ -933,6 +968,49 @@ async function saveData() {
 // ===== MODAL =====
 function showModal(id) { document.getElementById(id)?.classList.add('show'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+
+const COUNTRY_CURRENCY_MAP = {
+  'ישראל':'ILS','Israel':'ILS','Израиль':'ILS',
+  'גאורגיה':'GEL','Georgia':'GEL','Грузия':'GEL',
+  'דובאי':'AED','Dubai':'AED','UAE':'AED','ОАЭ':'AED',
+  'ספרד':'EUR','Spain':'EUR','פורטוגל':'EUR','Portugal':'EUR',
+  'יוון':'EUR','Greece':'EUR','קפריסין':'EUR','Cyprus':'EUR',
+  'גרמניה':'EUR','Germany':'EUR','איטליה':'EUR','Italy':'EUR',
+  'צרפת':'EUR','France':'EUR','הולנד':'EUR','Netherlands':'EUR',
+  'ארה"ב':'USD','USA':'USD','United States':'USD',
+  'אנגליה':'GBP','England':'GBP','UK':'GBP','Britain':'GBP',
+};
+
+function autoFillCountryCurrency(name) {
+  const cur = COUNTRY_CURRENCY_MAP[name.trim()];
+  if (cur) document.getElementById('nc-currency').value = cur;
+}
+
+async function submitAddCountry() {
+  const name = document.getElementById('nc-name').value.trim();
+  if (!name) { toast('נא למלא שם מדינה'); return; }
+  const currency = document.getElementById('nc-currency').value || 'USD';
+  if (!state.data) state.data = { countries: [] };
+  if (!state.data.countries) state.data.countries = [];
+  state.data.countries.push({ id: uid(), name, currency, file: name.toLowerCase().replace(/\s+/g,'_'), properties: [] });
+  closeModal('add-country-modal');
+  toast('שומר...');
+  await saveData();
+  toast('✓ מדינה נוספה');
+  render();
+}
+
+async function deleteProperty(propId) {
+  if (!confirm('למחוק נכס זה לצמיתות?')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  if (!country) return;
+  country.properties = (country.properties || []).filter(p => p.id !== propId);
+  toast('שומר...');
+  await saveData();
+  toast('✓ נכס נמחק');
+  state.view = 'country';
+  render();
+}
 
 async function submitAddProperty(currency) {
   const name = document.getElementById('np-name').value.trim();
