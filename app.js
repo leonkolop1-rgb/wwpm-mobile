@@ -77,6 +77,7 @@ async function hashPassword(password) {
 }
 
 // ===== STATE =====
+const _shareParam = new URLSearchParams(location.search).get('share');
 const state = {
   view: 'login',
   currentUser: null,
@@ -88,6 +89,8 @@ const state = {
   currentCountryId: null,
   currentPropertyId: null,
   expenseCategory: null,
+  viewOnly: false,
+  viewOwner: null,
 };
 
 // restore session
@@ -276,20 +279,22 @@ function renderHome() {
       <header class="top-bar">
         <div class="top-bar-title">${t('my_countries')}</div>
         <div class="top-bar-actions">
-          <button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>
+          ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
+          <button class="icon-btn" onclick="shareApp()" title="שתף">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           <button class="icon-btn" onclick="cycleLang()" title="שפה">🌐</button>
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
         </div>
       </header>
       <div class="content">
+        ${state.viewOnly ? `<div style="background:rgba(99,102,241,0.12);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;color:var(--accent);text-align:center">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
           : countries.map(renderCountryCard).join('')
         }
       </div>
       <div class="bottom-bar">
-        <span class="user-chip">👤 ${esc(state.currentUser)}</span>
+        <span class="user-chip">👤 ${esc(state.viewOwner || state.currentUser)}</span>
       </div>
     </div>
 
@@ -503,7 +508,10 @@ function renderProperty() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
-        <button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>
+        <div class="top-bar-actions">
+          ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
+          <button class="icon-btn" onclick="window.print()" title="הדפס">🖨️</button>
+        </div>
       </header>
 
       <div class="content">
@@ -525,6 +533,9 @@ function renderProperty() {
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
           ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">משכנתא/חודש</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), currency)}</div></div>` : ''}
         </div>
+
+        <!-- Value chart -->
+        ${renderValueChart(p.valueHistory, currency)}
 
         <!-- Property details -->
         <div class="detail-card">
@@ -611,7 +622,7 @@ function renderProperty() {
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
 
-        <button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>
+        ${!state.viewOnly ? `<button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>` : ''}
 
       </div>
     </div>
@@ -1036,12 +1047,15 @@ async function doLogin(e) {
 }
 
 async function loadUserData() {
+  const targetUser = _shareParam || state.currentUser;
+  const isShared = !!_shareParam && _shareParam !== state.currentUser;
   try {
-    const row = await sb.select('user_data', `username=eq.${encodeURIComponent(state.currentUser)}&select=data`, true);
+    const row = await sb.select('user_data', `username=eq.${encodeURIComponent(targetUser)}&select=data`, true);
     state.data = row?.data || { countries: [] };
   } catch {
     state.data = { countries: [] };
   }
+  if (isShared) { state.viewOnly = true; state.viewOwner = targetUser; }
   fetchRates();
   state.view = 'home';
   render();
@@ -1052,6 +1066,44 @@ async function saveData() {
     await sb.upsert('user_data', { username: state.currentUser, data: state.data });
   } catch {
     toast('שגיאה בשמירה');
+  }
+}
+
+// ===== VALUE CHART =====
+function renderValueChart(valueHistory, currency) {
+  const sorted = [...(valueHistory || [])].filter(h => h.value && h.date).sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length < 2) return '';
+  const vals = sorted.map(h => Math.round(h.value * (rates[currency] || 1)));
+  const minV = Math.min(...vals), maxV = Math.max(...vals), range = maxV - minV || 1;
+  const W = 300, H = 100, PX = 16, PY = 12;
+  const iW = W - PX * 2, iH = H - PY * 2;
+  const pts = vals.map((v, i) => `${PX + (i / (vals.length-1)) * iW},${PY + (1-(v-minV)/range)*iH}`).join(' ');
+  const change = vals[vals.length-1] - vals[0];
+  const col = change >= 0 ? '#22c55e' : '#ef4444';
+  const sym = CURRENCIES[currency] || currency;
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">📈 היסטוריית שווי (${sorted.length} נקודות)</div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;overflow:visible">
+        <defs><linearGradient id="vg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.2"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+        <polygon points="${pts} ${PX+iW},${PY+iH} ${PX},${PY+iH}" fill="url(#vg)"/>
+        <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        ${vals.map((v,i)=>{const x=PX+(i/(vals.length-1))*iW,y=PY+(1-(v-minV)/range)*iH;return`<circle cx="${x}" cy="${y}" r="3.5" fill="${col}"/>`;}).join('')}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);margin-top:4px">
+        <span>${sorted[0].date}</span>
+        <span style="color:${col};font-weight:700">${change>=0?'+':''}${sym}${Math.abs(change).toLocaleString()}</span>
+        <span>${sorted[sorted.length-1].date}</span>
+      </div>
+    </div>`;
+}
+
+function shareApp() {
+  const url = `${location.origin}${location.pathname}?share=${encodeURIComponent(state.currentUser)}`;
+  if (navigator.share) {
+    navigator.share({ title: 'WWPM — נתוני הנכסים שלי', url });
+  } else {
+    navigator.clipboard.writeText(url).then(() => toast('✓ הלינק הועתק!'));
   }
 }
 
