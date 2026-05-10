@@ -293,7 +293,7 @@ function renderHome() {
         ${state.viewOnly ? `<div class="view-only-banner">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
-          : countries.map(renderCountryCard).join('')
+          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">מדינות</div>${countries.map(renderCountryCard).join('')}`
         }
       </div>
       <div class="bottom-bar">
@@ -600,10 +600,13 @@ function renderProperty() {
           const grossYield = p.currentValue > 0 && annualRent > 0 ? (annualRent / p.currentValue * 100) : 0;
           const yieldPct = grossYield.toFixed(1);
           const yieldBarWidth = Math.min(grossYield * 8, 100).toFixed(0);
+          const netCashFlow = (p.monthlyRent || 0) - totalMonthlyMortgage;
+          const cfPos = netCashFlow >= 0;
           return `<div class="detail-card">
           <div class="detail-card-title">💰 סיכום פיננסי</div>
           ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(Math.round(p.currentValue - p.purchasePrice), currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
           ${totalExpenses ? row('סך הוצאות', fmtCurrency(Math.round(totalExpenses), currency), 'var(--danger)') : ''}
+          ${p.monthlyRent && totalMonthlyMortgage ? row('תזרים נטו/חודש', (cfPos?'+':'−') + fmtCurrency(Math.abs(Math.round(netCashFlow)), currency), cfPos ? 'var(--success)' : 'var(--danger)') : ''}
           ${grossYield > 0 ? `<div class="detail-row"><span class="detail-label">תשואה ברוטו</span><span class="detail-value" style="color:var(--accent)">${yieldPct}%/שנה</span></div>
           <div class="yield-wrap"><div class="yield-bar-bg"><div class="yield-bar-fill" style="width:${yieldBarWidth}%"></div></div></div>` : ''}
         </div>`;
@@ -934,16 +937,22 @@ function renderAnalytics() {
         <!-- Summary -->
         <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
 
-        ${Object.entries(byCurrency).map(([cur, d]) => `
+        ${Object.entries(byCurrency).map(([cur, d]) => {
+          const cashFlow = d.rent - d.mortgage;
+          const cfPos = cashFlow >= 0;
+          const portYield = d.value > 0 && d.rent > 0 ? (d.rent * 12 / d.value * 100).toFixed(1) : null;
+          return `
         <div class="detail-card">
           <div class="detail-card-title">💰 ${cur} ${(CURRENCIES[cur]||cur)}</div>
           <div class="detail-row"><span class="detail-label">שווי נכסים כיום</span><span class="detail-value">${fmtCurrency(Math.round(d.value), cur)}</span></div>
           <div class="detail-row"><span class="detail-label">סך ההשקעה</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(d.invested), cur)}</span></div>
           <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${d.value>=d.invested?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(d.value-d.invested), cur)}</span></div>
-          <div class="detail-row"><span class="detail-label">שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(d.rent), cur)}</span></div>
+          ${d.rent ? `<div class="detail-row"><span class="detail-label">שכירות/חודש</span><span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(d.rent), cur)}</span></div>` : ''}
           ${d.mortgage ? `<div class="detail-row"><span class="detail-label">משכנתא/חודש</span><span class="detail-value" style="color:var(--warning)">${fmtCurrency(Math.round(d.mortgage), cur)}</span></div>` : ''}
+          ${(d.rent || d.mortgage) ? `<div class="detail-row"><span class="detail-label">תזרים נטו/חודש</span><span class="detail-value" style="color:${cfPos?'var(--success)':'var(--danger)'}">${cfPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(cashFlow)), cur)}</span></div>` : ''}
+          ${portYield ? `<div class="detail-row"><span class="detail-label">תשואה ברוטו</span><span class="detail-value" style="color:var(--accent)">${portYield}%/שנה</span></div>` : ''}
           ${d.expenses ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">${fmtCurrency(Math.round(d.expenses), cur)}</span></div>` : ''}
-        </div>`).join('')}
+        </div>`;}).join('')}
 
         <!-- Per country -->
         <div class="section-label">לפי מדינה</div>
@@ -969,19 +978,83 @@ function renderAnalytics() {
 
         <!-- Top properties -->
         <div class="section-label">נכסים לפי שווי</div>
-        ${topProps.map((p, i) => `
+        ${topProps.map((p, i) => {
+          const cur = getCur(p);
+          const yld = p.currentValue && p.monthlyRent ? (p.monthlyRent * 12 / p.currentValue * 100).toFixed(1) : null;
+          return `
           <div class="detail-card" style="padding:12px 16px">
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:1.1rem;color:var(--muted);font-weight:700;min-width:24px">${i+1}</span>
+              <span style="font-size:1rem;color:var(--muted);font-weight:800;min-width:22px;font-feature-settings:'tnum'">${i+1}</span>
               <div style="flex:1;min-width:0">
-                <div style="font-weight:600">${esc(p.name || p.address || '—')}</div>
-                <div style="font-size:0.75rem;color:var(--muted)">${esc(p._country)}${p.city ? ' · ' + esc(p.city) : ''}</div>
+                <div style="font-weight:700;letter-spacing:-0.01em">${esc(p.name || p.address || '—')}</div>
+                <div style="font-size:0.74rem;color:var(--muted)">${esc(p._country)}${p.city ? ' · ' + esc(p.city) : ''}</div>
               </div>
-              <span style="font-weight:700;direction:ltr;white-space:nowrap">${fmtCurrency(Math.round(p.currentValue||0), getCur(p))}</span>
+              <div style="text-align:left">
+                <div style="font-weight:800;direction:ltr;white-space:nowrap;font-feature-settings:'tnum'">${fmtCurrency(Math.round(p.currentValue||0), cur)}</div>
+                ${yld ? `<div style="font-size:0.7rem;color:var(--accent);font-weight:700;text-align:left">${yld}%</div>` : ''}
+              </div>
             </div>
-          </div>`).join('')}
+          </div>`;}).join('')}
 
       </div>
+    </div>`;
+}
+
+function renderPortfolioSummary(countries) {
+  const today = new Date();
+  const allProps = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _cur: c.currency || 'USD' })));
+  if (!allProps.length) return '';
+  const totalValueUSD  = allProps.reduce((s, p) => s + (p.currentValue  || 0), 0);
+  const totalRentUSD   = allProps.reduce((s, p) => s + (p.monthlyRent   || 0), 0);
+  const totalMortgUSD  = allProps.reduce((s, p) =>
+    s + (p.mortgages || []).filter(m => m.endDate && new Date(m.endDate) > today)
+      .reduce((ms, m) => ms + (m.monthlyPayment || 0), 0), 0);
+  const cashFlowUSD    = totalRentUSD - totalMortgUSD;
+  const rentedCount    = allProps.filter(p => p.status === 'rented').length;
+  const cf = cashFlowUSD >= 0;
+  return `
+    <div class="portfolio-card">
+      <div class="portfolio-total-label">שווי תיק נכסים (USD)</div>
+      <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, 'USD')}</div>
+      <div class="portfolio-stats">
+        ${totalRentUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalRentUSD, 'USD')}</div></div>` : ''}
+        ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, 'USD')}</div></div>` : ''}
+        ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), 'USD')}</div></div>` : ''}
+        <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
+      </div>
+    </div>`;
+}
+
+function renderAlerts(countries) {
+  const today = new Date();
+  const in90 = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const alerts = [];
+  for (const c of countries) {
+    for (const p of c.properties || []) {
+      const t = p.tenantInfo || {};
+      if (t.endDate) {
+        const d = new Date(t.endDate);
+        if (d > today && d <= in90) {
+          const days = Math.ceil((d - today) / 86400000);
+          alerts.push(`🔑 <strong>${esc(p.name || p.city || '—')}</strong> — חוזה שכירות מסתיים בעוד ${days} ימים`);
+        }
+      }
+      for (const m of p.mortgages || []) {
+        if (m.endDate) {
+          const d = new Date(m.endDate);
+          if (d > today && d <= in90) {
+            const days = Math.ceil((d - today) / 86400000);
+            alerts.push(`🏦 <strong>${esc(p.name || p.city || '—')}</strong> — משכנתא "${esc(m.name)}" מסתיימת בעוד ${days} ימים`);
+          }
+        }
+      }
+    }
+  }
+  if (!alerts.length) return '';
+  return `
+    <div class="alert-card">
+      <div class="alert-header">⚠️ התראות (${alerts.length})</div>
+      ${alerts.map(a => `<div class="alert-item"><div class="alert-dot"></div><span>${a}</span></div>`).join('')}
     </div>`;
 }
 
