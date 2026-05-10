@@ -181,7 +181,10 @@ function fmtCurrency(amountUSD, cur = 'USD') {
   if (!amountUSD) return '—';
   const rate = rates[cur] || 1;
   const n = Math.round(Number(amountUSD) * rate);
-  return (CURRENCIES[cur] || cur) + n.toLocaleString();
+  const sym = CURRENCIES[cur] || cur;
+  if (Math.abs(n) >= 1000000) return sym + (n / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  if (Math.abs(n) >= 100000)  return sym + Math.round(n / 1000) + 'K';
+  return sym + n.toLocaleString();
 }
 
 const FLAGS = {
@@ -287,7 +290,7 @@ function renderHome() {
         </div>
       </header>
       <div class="content">
-        ${state.viewOnly ? `<div style="background:rgba(99,102,241,0.12);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;color:var(--accent);text-align:center">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
+        ${state.viewOnly ? `<div class="view-only-banner">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
           : countries.map(renderCountryCard).join('')
@@ -427,7 +430,7 @@ function renderPropertyCard(p, countryCurrency = 'USD') {
   const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
   return `
-    <div class="prop-card" onclick="goToProperty('${esc(p.id)}')">
+    <div class="prop-card" data-status="${p.status || ''}" onclick="goToProperty('${esc(p.id)}')">
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
@@ -592,11 +595,19 @@ function renderProperty() {
         </div>
 
         <!-- Financial summary -->
-        <div class="detail-card">
+        ${(() => {
+          const annualRent = (p.monthlyRent || 0) * 12;
+          const grossYield = p.currentValue > 0 && annualRent > 0 ? (annualRent / p.currentValue * 100) : 0;
+          const yieldPct = grossYield.toFixed(1);
+          const yieldBarWidth = Math.min(grossYield * 8, 100).toFixed(0);
+          return `<div class="detail-card">
           <div class="detail-card-title">💰 סיכום פיננסי</div>
           ${p.currentValue && p.purchasePrice ? row('רווח נייר', fmtCurrency(Math.round(p.currentValue - p.purchasePrice), currency), p.currentValue >= p.purchasePrice ? 'var(--success)' : 'var(--danger)') : ''}
           ${totalExpenses ? row('סך הוצאות', fmtCurrency(Math.round(totalExpenses), currency), 'var(--danger)') : ''}
-        </div>
+          ${grossYield > 0 ? `<div class="detail-row"><span class="detail-label">תשואה ברוטו</span><span class="detail-value" style="color:var(--accent)">${yieldPct}%/שנה</span></div>
+          <div class="yield-wrap"><div class="yield-bar-bg"><div class="yield-bar-fill" style="width:${yieldBarWidth}%"></div></div></div>` : ''}
+        </div>`;
+        })()}
 
         <!-- Expense categories -->
         ${(maintenance.length || improvements.length || oneTime.length || taxPayments.length || brokerages.length) ? `
@@ -987,7 +998,7 @@ function renderCountryCard(c) {
         <div class="country-sub">${props.length} ${t('properties')}</div>
       </div>
       <div class="country-value">
-        <span>${fmtCurrency(totalValue, currency)}</span>
+        <span class="country-value-num">${fmtCurrency(totalValue, currency)}</span>
         <span class="chevron">›</span>
       </div>
     </div>`;
@@ -1359,6 +1370,7 @@ async function submitEditProperty(currency) {
   const notes = document.getElementById('ep-notes')?.value.trim();
   if (notes !== undefined) p.notes = notes || undefined;
   closeModal('edit-prop-modal');
+  haptic();
   toast('שומר...');
   await saveData();
   toast('✓ נשמר');
@@ -1392,6 +1404,7 @@ async function submitExpense(currency, catKey) {
     p[catKey].push(entry);
   }
   closeModal('exp-modal');
+  haptic();
   toast('שומר...');
   await saveData();
   toast('✓ נשמר');
@@ -1410,6 +1423,7 @@ async function submitRentPayment(currency) {
   p.rentHistory = p.rentHistory.filter(r => r.month !== month || r.autoFilled);
   p.rentHistory.push({ id: uid(), month, amount: amountUSD, paymentCurrency: currency, autoFilled: false });
   closeModal('rent-modal');
+  haptic();
   toast('שומר...');
   await saveData();
   toast('✓ נשמר');
@@ -1464,6 +1478,20 @@ function goToAnalytics() {
   render();
   window.scrollTo(0, 0);
 }
+
+// ===== HAPTIC =====
+function haptic(ms = 8) { try { navigator.vibrate?.(ms); } catch {} }
+
+// ===== SWIPE BACK GESTURE =====
+let _swipeStartX = 0;
+document.addEventListener('touchstart', e => { _swipeStartX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - _swipeStartX;
+  if (dx > 72 && _swipeStartX < 55 && state.view !== 'home' && state.view !== 'login' && state.view !== 'loading-data') {
+    haptic(6);
+    goBack();
+  }
+}, { passive: true });
 
 // ===== INIT =====
 window.addEventListener('load', () => {
