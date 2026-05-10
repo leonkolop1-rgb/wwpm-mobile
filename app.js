@@ -293,7 +293,7 @@ function renderHome() {
         ${state.viewOnly ? `<div class="view-only-banner">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
-          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">מדינות</div>${countries.map(renderCountryCard).join('')}`
+          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">מדינות</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש מדינה..." oninput="doSearch(this.value)" /></div>${countries.map(renderCountryCard).join('')}`
         }
       </div>
       <div class="bottom-bar">
@@ -349,6 +349,7 @@ function renderCountry() {
         <button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
+        ${props.length > 1 ? `<div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש נכס..." oninput="doSearch(this.value)" /></div>` : ''}
         ${props.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
           : props.map(p => renderPropertyCard(p, currency)).join('')
@@ -430,7 +431,7 @@ function renderPropertyCard(p, countryCurrency = 'USD') {
   const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
   return `
-    <div class="prop-card" data-status="${p.status || ''}" onclick="goToProperty('${esc(p.id)}')">
+    <div class="prop-card" data-status="${p.status || ''}" data-searchname="${esc(((p.name||'')+' '+(p.city||'')+' '+(p.address||'')+' '+(p.status||'')).toLowerCase())}" onclick="goToProperty('${esc(p.id)}')">
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
@@ -628,6 +629,19 @@ function renderProperty() {
           <span>💵 היסטוריית שכירות</span>
           <span class="expense-cat-right"><span style="color:var(--muted)">${(p.rentHistory||[]).filter(r=>!r.autoFilled).length} תשלומים</span><span class="chevron">›</span></span>
         </div>
+
+        <!-- Lease countdown -->
+        ${(() => {
+          if (!tenant.endDate) return '';
+          const days = Math.ceil((new Date(tenant.endDate) - new Date()) / 86400000);
+          if (days < 0) return `<div class="lease-expired">⚠️ חוזה שכירות פג לפני ${Math.abs(days)} ימים</div>`;
+          if (days > 120) return '';
+          const urgency = days <= 30 ? 'var(--danger)' : 'var(--warning)';
+          return `<div class="lease-countdown">
+            <div><div class="lease-days-num" style="color:${urgency}">${days}</div><div class="lease-days-label">ימים לסיום חוזה</div></div>
+            <div style="flex:1;font-size:0.85rem;color:var(--text2)">חוזה עם <strong>${esc(tenant.name||'השוכר')}</strong> מסתיים ב-${new Date(tenant.endDate).toLocaleDateString('he-IL')}</div>
+          </div>`;
+        })()}
 
         <!-- Notes -->
         ${p.notes ? `
@@ -936,6 +950,8 @@ function renderAnalytics() {
 
         <!-- Summary -->
         <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
+        ${renderPortfolioDonut(countries)}
+        ${renderRentIncomeChart(countries)}
 
         ${Object.entries(byCurrency).map(([cur, d]) => {
           const cashFlow = d.rent - d.mortgage;
@@ -996,6 +1012,93 @@ function renderAnalytics() {
             </div>
           </div>`;}).join('')}
 
+      </div>
+    </div>`;
+}
+
+function renderPortfolioDonut(countries) {
+  const COLORS = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#06b6d4','#84cc16'];
+  const data = countries
+    .map(c => ({ name: c.name, value: (c.properties||[]).reduce((s,p)=>s+(p.currentValue||0),0) }))
+    .filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+  if (data.length < 2) return '';
+  const total = data.reduce((s,d) => s+d.value, 0);
+  const cx = 80, cy = 80, r = 58, sw = 22;
+  const toRad = a => a * Math.PI / 180;
+  const arc = (sa, ea) => {
+    const x1 = cx + r*Math.cos(toRad(sa-90)), y1 = cy + r*Math.sin(toRad(sa-90));
+    const x2 = cx + r*Math.cos(toRad(ea-90)), y2 = cy + r*Math.sin(toRad(ea-90));
+    return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 ${ea-sa>180?1:0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  };
+  let angle = 0;
+  const paths = data.map((d, i) => {
+    const sweep = d.value / total * 360;
+    const gap = data.length > 1 ? 2 : 0;
+    const path = arc(angle + gap/2, angle + sweep - gap/2);
+    angle += sweep;
+    return `<path d="${path}" fill="none" stroke="${COLORS[i%COLORS.length]}" stroke-width="${sw}" stroke-linecap="round"/>`;
+  }).join('');
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">🌍 פיזור תיק לפי מדינה</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <svg width="160" height="160" viewBox="0 0 160 160" style="flex-shrink:0">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/>
+          ${paths}
+          <text x="${cx}" y="${cy-5}" text-anchor="middle" fill="var(--text)" font-size="15" font-weight="800" font-family="-apple-system,sans-serif">${data.length}</text>
+          <text x="${cx}" y="${cy+10}" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="-apple-system,sans-serif">מדינות</text>
+        </svg>
+        <div style="flex:1;min-width:120px;display:flex;flex-direction:column;gap:8px">
+          ${data.map((d,i) => `
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${COLORS[i%COLORS.length]}"></div>
+              <span style="flex:1;font-size:0.8rem;font-weight:600">${FLAGS[d.name]||'🌍'} ${esc(d.name)}</span>
+              <span style="font-size:0.76rem;color:var(--muted);font-feature-settings:'tnum'">${(d.value/total*100).toFixed(0)}%</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderRentIncomeChart(countries) {
+  const monthly = {};
+  for (const c of countries) {
+    for (const p of c.properties||[]) {
+      for (const r of p.rentHistory||[]) {
+        if (r.autoFilled || !r.month || !r.amount) continue;
+        monthly[r.month] = (monthly[r.month] || 0) + r.amount;
+      }
+    }
+  }
+  const sorted = Object.entries(monthly).sort(([a],[b]) => a.localeCompare(b));
+  if (sorted.length < 2) return '';
+  const recent = sorted.slice(-12);
+  const vals = recent.map(([,v]) => v);
+  const maxV = Math.max(...vals) || 1;
+  const totalUSD = vals.reduce((s,v)=>s+v, 0);
+  const n = recent.length;
+  const W = 300, H = 70;
+  const slotW = W / n;
+  const bw = Math.max(6, slotW - 6);
+  const bars = recent.map(([month, val], i) => {
+    const bh = Math.max(3, (val/maxV)*H);
+    const x = i * slotW + (slotW - bw) / 2;
+    const y = H - bh;
+    const label = month.slice(5);
+    const isMax = val === maxV;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${isMax ? 'var(--success)' : '#10b981'}" opacity="${isMax ? 1 : 0.55}"/>
+      ${i % 2 === 0 || n <= 6 ? `<text x="${(x+bw/2).toFixed(1)}" y="${H+16}" text-anchor="middle" fill="var(--muted)" font-size="8.5" font-family="-apple-system,sans-serif">${label}</text>` : ''}`;
+  }).join('');
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">💵 הכנסות שכ"ד — ${n} חודשים</div>
+      <svg width="100%" viewBox="0 0 ${W} ${H+22}" preserveAspectRatio="none" style="height:${H+22}px">
+        ${bars}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
+        <span>${recent[0][0]}</span>
+        <span style="color:var(--success);font-weight:800">סה"כ $${Math.round(totalUSD).toLocaleString()}</span>
+        <span>${recent[recent.length-1][0]}</span>
       </div>
     </div>`;
 }
@@ -1064,7 +1167,7 @@ function renderCountryCard(c) {
   const totalValue = props.reduce((s, p) => s + (p.currentValue || 0), 0);
   const flag = FLAGS[c.name] || '🌍';
   return `
-    <div class="country-card" onclick="goToCountry('${esc(c.id)}')">
+    <div class="country-card" data-searchname="${esc(c.name.toLowerCase())}" onclick="goToCountry('${esc(c.id)}')">
       <div class="country-flag">${flag}</div>
       <div class="country-info">
         <div class="country-name">${esc(c.name)}</div>
@@ -1090,6 +1193,14 @@ function toast(msg) {
   el.classList.add('show');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ===== SEARCH =====
+function doSearch(q) {
+  const lq = q.toLowerCase().trim();
+  document.querySelectorAll('[data-searchname]').forEach(el => {
+    el.style.display = (!lq || el.dataset.searchname.toLowerCase().includes(lq)) ? '' : 'none';
+  });
 }
 
 // ===== ACTIONS =====
