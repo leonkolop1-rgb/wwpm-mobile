@@ -191,28 +191,37 @@ function fmtCurrency(amountUSD, cur = 'USD') {
   return sym + n.toLocaleString();
 }
 
-const FLAGS = {
-  'ישראל':'🇮🇱','Israel':'🇮🇱','Израиль':'🇮🇱',
-  'ארה"ב':'🇺🇸','USA':'🇺🇸','США':'🇺🇸','United States':'🇺🇸',
-  'גאורגיה':'🇬🇪','Georgia':'🇬🇪','Грузия':'🇬🇪',
-  'ספרד':'🇪🇸','Spain':'🇪🇸','Испания':'🇪🇸',
-  'פורטוגל':'🇵🇹','Portugal':'🇵🇹','Португалия':'🇵🇹',
-  'יוון':'🇬🇷','Greece':'🇬🇷','Греция':'🇬🇷',
-  'קפריסין':'🇨🇾','Cyprus':'🇨🇾','Кипр':'🇨🇾',
-  'גרמניה':'🇩🇪','Germany':'🇩🇪','Германия':'🇩🇪',
-  'איטליה':'🇮🇹','Italy':'🇮🇹','Италия':'🇮🇹',
-  'צרפת':'🇫🇷','France':'🇫🇷','Франция':'🇫🇷',
-  'הולנד':'🇳🇱','Netherlands':'🇳🇱','Нидерланды':'🇳🇱',
-  'דובאי':'🇦🇪','Dubai':'🇦🇪','ОАЭ':'🇦🇪','UAE':'🇦🇪',
-  'תאילנד':'🇹🇭','Thailand':'🇹🇭','Таиланд':'🇹🇭',
-  'טורקיה':'🇹🇷','Turkey':'🇹🇷','Турция':'🇹🇷',
-  'צ\'כיה':'🇨🇿','Czech Republic':'🇨🇿','Чехия':'🇨🇿',
-  'פולין':'🇵🇱','Poland':'🇵🇱','Польша':'🇵🇱',
-  'רומניה':'🇷🇴','Romania':'🇷🇴','Румыния':'🇷🇴',
-  'הונגריה':'🇭🇺','Hungary':'🇭🇺','Венгрия':'🇭🇺',
-  'קנדה':'🇨🇦','Canada':'🇨🇦','Канада':'🇨🇦',
-  'אוסטרליה':'🇦🇺','Australia':'🇦🇺','Австралия':'🇦🇺',
+// Flag image paths (flags/ folder) — falls back to null for unlisted countries
+const FLAGIMGS = {
+  'ישראל':'flags/israel.png','Israel':'flags/israel.png','Израиль':'flags/israel.png',
+  'ארה"ב':'flags/us.png','USA':'flags/us.png','США':'flags/us.png','United States':'flags/us.png',
+  'גאורגיה':'flags/georgia.png','Georgia':'flags/georgia.png','Грузия':'flags/georgia.png',
+  'ספרד':'flags/spain.png','Spain':'flags/spain.png','Испания':'flags/spain.png',
+  'פורטוגל':'flags/portugal.png','Portugal':'flags/portugal.png','Португалия':'flags/portugal.png',
+  'יוון':'flags/greece.png','Greece':'flags/greece.png','Греция':'flags/greece.png',
+  'קפריסין':'flags/cyprus.png','Cyprus':'flags/cyprus.png','Кипр':'flags/cyprus.png',
+  'גרמניה':'flags/germany.png','Germany':'flags/germany.png','Германия':'flags/germany.png',
+  'איטליה':'flags/italy.png','Italy':'flags/italy.png','Италия':'flags/italy.png',
+  'צרפת':'flags/france.png','France':'flags/france.png','Франция':'flags/france.png',
+  'דובאי':'flags/uae.png','Dubai':'flags/uae.png','ОАЭ':'flags/uae.png','UAE':'flags/uae.png',
+  'פולין':'flags/poland.png','Poland':'flags/poland.png','Польша':'flags/poland.png',
+  'רומניה':'flags/romania.png','Romania':'flags/romania.png','Румыния':'flags/romania.png',
+  'בריטניה':'flags/gb.png','UK':'flags/gb.png','Great Britain':'flags/gb.png','GB':'flags/gb.png',
+  'סרביה':'flags/serbia.png','Serbia':'flags/serbia.png','Сербия':'flags/serbia.png',
 };
+// Emoji fallback for countries without a local image
+const FLAGS = {
+  'הולנד':'🇳🇱','Netherlands':'🇳🇱','תאילנד':'🇹🇭','Thailand':'🇹🇭',
+  'טורקיה':'🇹🇷','Turkey':'🇹🇷',"צ'כיה":'🇨🇿','Czech Republic':'🇨🇿',
+  'הונגריה':'🇭🇺','Hungary':'🇭🇺','קנדה':'🇨🇦','Canada':'🇨🇦',
+  'אוסטרליה':'🇦🇺','Australia':'🇦🇺',
+};
+function getFlagHtml(name, imgClass = 'country-flag-img', fallbackClass = 'country-flag') {
+  const img = FLAGIMGS[name];
+  if (img) return `<img src="${img}" class="${imgClass}" alt="${esc(name)}">`;
+  const emoji = FLAGS[name] || '🌍';
+  return `<div class="${fallbackClass}">${emoji}</div>`;
+}
 
 // ===== RENDER =====
 function render() {
@@ -359,7 +368,8 @@ function renderCountry() {
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
   if (!country) { goBack(); return ''; }
   const rawProps = country.properties || [];
-  const flag = FLAGS[country.name] || '🌍';
+  const flagImg = FLAGIMGS[country.name];
+  const flagTitle = flagImg ? `<img src="${flagImg}" class="topbar-flag" alt="">` : (FLAGS[country.name] || '🌍');
   const currency = country.currency || 'USD';
   const curSym = CURRENCIES[currency] || currency;
   const sort = state.sortProps || 'default';
@@ -376,7 +386,7 @@ function renderCountry() {
     <div class="page">
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
-        <div class="top-bar-title">${flag} ${esc(country.name)}</div>
+        <div class="top-bar-title">${flagTitle} ${esc(country.name)}</div>
         <button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
@@ -1374,7 +1384,6 @@ function renderCountryCard(c) {
   const totalRent  = props.reduce((s, p) => s + (p.monthlyRent  || 0), 0);
   const rented = props.filter(p => p.status === 'rented').length;
   const yld = totalValue > 0 && totalRent > 0 ? (totalRent * 12 / totalValue * 100).toFixed(1) : null;
-  const flag = FLAGS[c.name] || '🌍';
   const sub = [
     `${props.length} ${t('properties')}`,
     rented > 0 ? `${rented} מושכרים` : null,
@@ -1382,7 +1391,7 @@ function renderCountryCard(c) {
   ].filter(Boolean).join(' · ');
   return `
     <div class="country-card" data-searchname="${esc(c.name.toLowerCase())}" onclick="goToCountry('${esc(c.id)}')">
-      <div class="country-flag">${flag}</div>
+      ${getFlagHtml(c.name)}
       <div class="country-info">
         <div class="country-name">${esc(c.name)}</div>
         <div class="country-sub">${sub}</div>
