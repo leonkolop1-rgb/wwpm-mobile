@@ -1619,12 +1619,12 @@ function renderPortfolioSummary(countries) {
       <div class="portfolio-total-label">שווי תיק נכסים (${dc})</div>
       <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
       <div class="portfolio-stats">
+        <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
+        ${grossYieldPct ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תשואה ברוטו</div><div class="portfolio-stat-num">${grossYieldPct}%</div></div>` : ''}
         ${totalRentUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalRentUSD, dc)}</div></div>` : ''}
         ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, dc)}</div></div>` : ''}
         ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>` : ''}
-        ${grossYieldPct ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תשואה ברוטו</div><div class="portfolio-stat-num">${grossYieldPct}%</div></div>` : ''}
-        ${totalDebtUSD > 0 ? `<div class="portfolio-stat"><div class="portfolio-stat-label">הון עצמי משוער</div><div class="portfolio-stat-num" style="color:rgba(129,140,248,0.95)">${fmtCurrency(Math.round(equityUSD), dc)}</div></div>` : ''}
-        <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
+        ${totalDebtUSD > 0 ? `<div class="portfolio-stat"><div class="portfolio-stat-label">הון עצמי</div><div class="portfolio-stat-num" style="color:rgba(129,140,248,0.95)">${fmtCurrency(Math.round(equityUSD), dc)}</div></div>` : ''}
       </div>
     </div>`;
 }
