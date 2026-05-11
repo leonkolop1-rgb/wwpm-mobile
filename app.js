@@ -2039,7 +2039,7 @@ function showUpdateBanner() {
     zIndex: '9999', boxShadow: '0 -4px 28px rgba(99,102,241,0.45)',
     gap: '12px',
   });
-  el.innerHTML = `<span>🚀 גרסה חדשה זמינה!</span><button style="background:white;color:#6366f1;border:none;border-radius:9px;padding:7px 16px;font-size:0.8rem;font-weight:800;cursor:pointer" onclick="location.reload()">עדכן עכשיו</button>`;
+  el.innerHTML = `<span>🚀 גרסה חדשה זמינה!</span><button style="background:white;color:#6366f1;border:none;border-radius:9px;padding:7px 16px;font-size:0.8rem;font-weight:800;cursor:pointer" onclick="applyUpdate()">עדכן עכשיו</button>`;
   document.body.appendChild(el);
   haptic(12);
 }
@@ -2614,16 +2614,35 @@ document.addEventListener('touchend', e => {
 }, { passive: true });
 
 // ===== INIT =====
+let _swReg = null;
+
+function applyUpdate() {
+  if (_swReg?.waiting) {
+    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    location.reload();
+  }
+}
+
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
+      _swReg = reg;
+      // Show banner if a new SW is already waiting
+      if (reg.waiting) showUpdateBanner();
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         nw.addEventListener('statechange', () => {
           if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
         });
       });
+      // Force update check when app becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
     }).catch(() => {});
+    // Reload page when new SW takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
   }
   window.addEventListener('online',  updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
