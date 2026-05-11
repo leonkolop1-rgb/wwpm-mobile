@@ -1000,3 +1000,49 @@ html, body {
   text-align: center;
   font-weight: 600;
 }
+
+/* ===== COUNTRY SUMMARY CARD ===== */
+.country-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px 12px;
+  margin-bottom: 2px;
+}
+.country-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0;
+}
+.country-summary-stat {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 4px;
+  border-right: 1px solid var(--border);
+}
+.country-summary-stat:last-child { border-right: none; }
+.country-summary-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.country-summary-value {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text);
+  font-feature-settings: 'tnum';
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .top-bar, .back-btn, .icon-btn, .bottom-bar { display: none !important; }
+  .page { animation: none !important; }
+  .detail-card { break-inside: avoid; }
+}
