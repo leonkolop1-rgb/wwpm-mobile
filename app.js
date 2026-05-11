@@ -4,6 +4,10 @@
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8lcFaV4BThB-OHroEqjYTw_7ZKJrz7F';
 
+const EMAILJS_PUBLIC_KEY  = '_0lVXepzH6_REXm47';
+const EMAILJS_SERVICE_ID  = 'service_wg7h8kh';
+const EMAILJS_TEMPLATE_ID = 'template_wptusmp';
+
 // ===== SUPABASE CLIENT =====
 const sb = {
   _h(extra = {}) {
@@ -114,6 +118,12 @@ const STRINGS = {
     err_required: 'יש למלא את כל השדות',
     err_not_found: 'שם משתמש לא קיים',
     err_wrong_pass: 'סיסמה שגויה',
+    forgot_password: 'שכחתי סיסמה',
+    forgot_enter_user: 'הזן שם משתמש לאיפוס סיסמה',
+    forgot_sending: 'שולח...',
+    forgot_sent: 'סיסמה זמנית נשלחה למייל שלך',
+    forgot_no_email: 'לא נמצא מייל לחשבון זה',
+    forgot_error: 'שגיאה בשליחת המייל',
     my_countries: 'המדינות שלי',
     no_countries: 'אין מדינות עדיין',
     no_properties: 'אין נכסים במדינה זו',
@@ -136,6 +146,12 @@ const STRINGS = {
     err_required: 'Please fill all fields',
     err_not_found: 'User not found',
     err_wrong_pass: 'Wrong password',
+    forgot_password: 'Forgot Password',
+    forgot_enter_user: 'Enter your username to reset password',
+    forgot_sending: 'Sending...',
+    forgot_sent: 'Temporary password sent to your email',
+    forgot_no_email: 'No email found for this account',
+    forgot_error: 'Error sending email',
     my_countries: 'My Countries',
     no_countries: 'No countries yet',
     no_properties: 'No properties in this country',
@@ -158,6 +174,12 @@ const STRINGS = {
     err_required: 'Заполните все поля',
     err_not_found: 'Пользователь не найден',
     err_wrong_pass: 'Неверный пароль',
+    forgot_password: 'Забыл пароль',
+    forgot_enter_user: 'Введите имя пользователя для сброса пароля',
+    forgot_sending: 'Отправка...',
+    forgot_sent: 'Временный пароль отправлен на ваш email',
+    forgot_no_email: 'Email не найден для этого аккаунта',
+    forgot_error: 'Ошибка при отправке письма',
     my_countries: 'Мои страны',
     no_countries: 'Стран пока нет',
     no_properties: 'Нет объектов в этой стране',
@@ -317,6 +339,7 @@ function renderLogin() {
             ${state.loading ? t('logging_in') : t('login_btn')}
           </button>
         </form>
+        <button class="btn-forgot-password" onclick="doForgotPassword()">${t('forgot_password')}</button>
       </div>
       <div class="login-version">v1.1.0</div>
     </div>`;
@@ -1989,6 +2012,43 @@ async function doLogin(e) {
   } catch (err) {
     state.error = err.message;
     state.loading = false;
+    render();
+  }
+}
+
+async function doForgotPassword() {
+  const username = (document.getElementById('login-username').value || '').trim();
+  if (!username) {
+    const input = document.getElementById('login-username');
+    input.placeholder = t('forgot_enter_user');
+    input.focus();
+    return;
+  }
+  const btn = document.querySelector('.btn-forgot-password');
+  if (btn) { btn.disabled = true; btn.textContent = t('forgot_sending'); }
+  try {
+    const row = await sb.select('users', `username=eq.${encodeURIComponent(username)}&select=username,email`, true);
+    if (!row || !row.email) {
+      state.error = t('forgot_no_email');
+      if (btn) { btn.disabled = false; btn.textContent = t('forgot_password'); }
+      render(); return;
+    }
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const tmpPass = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const hash = await hashPassword(tmpPass);
+    await sb.patch('users', `username=eq.${encodeURIComponent(username)}`, { password_hash: hash });
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: row.email,
+      to_name: username,
+      temp_password: tmpPass,
+    });
+    state.error = null;
+    if (btn) { btn.disabled = false; btn.textContent = t('forgot_password'); }
+    alert(t('forgot_sent'));
+  } catch (err) {
+    state.error = t('forgot_error') + ': ' + err.message;
+    if (btn) { btn.disabled = false; btn.textContent = t('forgot_password'); }
     render();
   }
 }
