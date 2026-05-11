@@ -387,6 +387,7 @@ function renderHome() {
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.viewOwner || state.currentUser)}</span>
         <span id="online-dot" class="online-dot" title="מחובר"></span>
+        <button class="logout-btn" onclick="doLogout()">${t('logout')}</button>
       </div>
     </div>
 
