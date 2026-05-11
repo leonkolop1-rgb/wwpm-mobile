@@ -1587,7 +1587,8 @@ function renderTotalReturn(countries) {
 
 // ===== ALL FILES =====
 function renderAllFiles(p) {
-  const allFiles = [
+  const directFiles = p.files || [];
+  const expenseFiles = [
     ...(p.maintenance     || []).flatMap(e => e.files || []),
     ...(p.improvements    || []).flatMap(e => e.files || []),
     ...(p.oneTimeExpenses || []).flatMap(e => e.files || []),
@@ -1595,14 +1596,68 @@ function renderAllFiles(p) {
     ...(p.brokerages      || []).flatMap(e => e.files || []),
     ...(p.mortgages       || []).flatMap(m => m.files || []),
   ];
-  if (!allFiles.length) return '';
+  const canEdit = !state.viewOnly;
   return `
     <div class="detail-card">
-      <div class="detail-card-title">📎 מסמכים מצורפים (${allFiles.length})</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-        ${allFiles.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="file-chip" style="font-size:0.78rem;padding:5px 10px">📎 ${esc(f.name)}</a>`).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="detail-card-title" style="margin-bottom:0">📁 מסמכי הנכס</div>
+        ${canEdit ? `<button onclick="uploadPropertyDoc()" style="background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:0.78rem;font-weight:700;padding:5px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent">＋ מסמך</button>` : ''}
       </div>
+      ${directFiles.length === 0 && expenseFiles.length === 0
+        ? `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:12px 0">אין מסמכים מצורפים</div>`
+        : ''}
+      ${directFiles.length > 0 ? `
+        <div style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">מסמכי נכס</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:${expenseFiles.length ? '14px' : '0'}">
+          ${directFiles.map(f => `
+            <div style="display:flex;align-items:center;gap:4px">
+              <a href="${esc(f.url)}" target="_blank" rel="noopener" class="file-chip" style="font-size:0.78rem;padding:5px 10px">📎 ${esc(f.name)}</a>
+              ${canEdit ? `<button onclick="deletePropertyDoc('${esc(f.id)}')" style="background:none;border:none;color:var(--danger);font-size:0.9rem;cursor:pointer;padding:2px 4px;opacity:0.7">✕</button>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
+      ${expenseFiles.length > 0 ? `
+        <div style="font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">מסמכי הוצאות ומשכנתאות</div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px">
+          ${expenseFiles.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="file-chip" style="font-size:0.78rem;padding:5px 10px">📎 ${esc(f.name)}</a>`).join('')}
+        </div>` : ''}
     </div>`;
+}
+
+async function uploadPropertyDoc() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = 'image/*,.pdf,.doc,.docx,.xls,.xlsx';
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+    if (!p) return;
+    toast('מעלה מסמך...');
+    try {
+      const uploaded = await uploadFiles(Array.from(input.files), `${state.currentUser}/${p.id}/docs`);
+      uploaded.forEach(f => f.id = uid());
+      if (!p.files) p.files = [];
+      p.files.push(...uploaded);
+      await saveData();
+      haptic(8);
+      toast('✓ מסמך הועלה');
+      render();
+    } catch { toast('שגיאה בהעלאה'); }
+  };
+  input.click();
+}
+
+async function deletePropertyDoc(fileId) {
+  if (!confirm('למחוק מסמך זה?')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  p.files = (p.files || []).filter(f => f.id !== fileId);
+  toast('שומר...');
+  await saveData();
+  toast('✓ נמחק');
+  render();
 }
 
 // ===== UPDATE BANNER =====
