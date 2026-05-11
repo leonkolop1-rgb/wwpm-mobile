@@ -217,7 +217,7 @@ function fmtCurrency(amountUSD, cur = 'USD') {
 // Predefined countries for the picker
 const COUNTRY_PRESETS = [
   { name: 'ישראל',   flag: 'flags/israel.png',   currency: 'ILS' },
-  { name: 'דובאי',   flag: 'flags/uae.png',       currency: 'AED' },
+  { name: 'א.האמירויות', flag: 'flags/uae.png',   currency: 'AED' },
   { name: 'גאורגיה', flag: 'flags/georgia.png',   currency: 'GEL' },
   { name: 'ספרד',    flag: 'flags/spain.png',      currency: 'EUR' },
   { name: 'פורטוגל', flag: 'flags/portugal.png',  currency: 'EUR' },
@@ -247,7 +247,7 @@ const FLAGIMGS = {
   'איטליה':'flags/italy.png','Italy':'flags/italy.png','Италия':'flags/italy.png',
   'צרפת':'flags/france.png','France':'flags/france.png','Франция':'flags/france.png',
   'דובאי':'flags/uae.png','Dubai':'flags/uae.png','ОАЭ':'flags/uae.png','UAE':'flags/uae.png',
-  'אמירויות':'flags/uae.png','איחוד האמירויות':'flags/uae.png','United Arab Emirates':'flags/uae.png',
+  'א.האמירויות':'flags/uae.png','אמירויות':'flags/uae.png','איחוד האמירויות':'flags/uae.png','United Arab Emirates':'flags/uae.png',
   'פולין':'flags/poland.png','Poland':'flags/poland.png','Польша':'flags/poland.png',
   'רומניה':'flags/romania.png','Romania':'flags/romania.png','Румыния':'flags/romania.png',
   'בריטניה':'flags/gb.png','UK':'flags/gb.png','Great Britain':'flags/gb.png','GB':'flags/gb.png','England':'flags/gb.png',
