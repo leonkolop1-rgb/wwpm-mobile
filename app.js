@@ -223,6 +223,48 @@ function getFlagHtml(name, imgClass = 'country-flag-img', fallbackClass = 'count
   return `<div class="${fallbackClass}">${emoji}</div>`;
 }
 
+// ===== LANGUAGE DROPDOWN =====
+const LANG_META = {
+  heb: { label: 'עברית',   short: 'עב', flag: 'flags/israel.png' },
+  eng: { label: 'English',  short: 'EN', flag: 'flags/us.png'     },
+  rus: { label: 'Русский',  short: 'РУ', flag: 'flags/russia.png' },
+};
+
+function renderLangDropdown(id, compact = false) {
+  const cur = LANG_META[state.lang] || LANG_META.heb;
+  const opts = Object.entries(LANG_META).map(([key, m]) => `
+    <button class="cls-option${state.lang === key ? ' active' : ''}" onclick="setLangClose('${key}','${id}')">
+      <img src="${m.flag}" class="cls-flag" alt="">
+      <span>${compact ? m.short : m.label}</span>
+    </button>`).join('');
+  return `
+    <div class="custom-lang-select${compact ? ' compact' : ''}" id="${id}">
+      <button class="cls-trigger" onclick="toggleCustomSelect('${id}')">
+        <img src="${cur.flag}" class="cls-flag" alt="">
+        <span class="cls-cur-label">${compact ? cur.short : cur.label}</span>
+        <span class="cls-arrow">▾</span>
+      </button>
+      <div class="cls-dropdown">${opts}</div>
+    </div>`;
+}
+
+function toggleCustomSelect(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.custom-lang-select.open').forEach(e => e.classList.remove('open'));
+  if (!isOpen) {
+    el.classList.add('open');
+    const close = e => { if (!el.contains(e.target)) { el.classList.remove('open'); document.removeEventListener('click', close); } };
+    setTimeout(() => document.addEventListener('click', close), 0);
+  }
+}
+
+function setLangClose(lang, id) {
+  document.getElementById(id)?.classList.remove('open');
+  setLang(lang);
+}
+
 // ===== RENDER =====
 function render() {
   const app = document.getElementById('app');
@@ -258,11 +300,7 @@ function renderLogin() {
         <div class="login-title">World Wide Property Manager</div>
         <div class="login-subtitle">by Leon</div>
         <div class="lang-switcher">
-          <select class="login-lang-select" onchange="setLang(this.value)">
-            <option value="heb" ${state.lang==='heb'?'selected':''}>🇮🇱 עברית</option>
-            <option value="eng" ${state.lang==='eng'?'selected':''}>🇺🇸 English</option>
-            <option value="rus" ${state.lang==='rus'?'selected':''}>🇷🇺 Русский</option>
-          </select>
+          ${renderLangDropdown('login-lang', false)}
         </div>
         <form class="login-form" onsubmit="doLogin(event)">
           <div class="form-group">
@@ -303,11 +341,7 @@ function renderHome() {
           <button class="icon-btn" onclick="shareApp()" title="שתף">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="ניהול">👑</button>` : ''}
-          <select class="top-select" onchange="setLang(this.value)" title="שפה">
-            <option value="heb" ${state.lang==='heb'?'selected':''}>🇮🇱 עב</option>
-            <option value="eng" ${state.lang==='eng'?'selected':''}>🇺🇸 EN</option>
-            <option value="rus" ${state.lang==='rus'?'selected':''}>🇷🇺 РУ</option>
-          </select>
+          ${renderLangDropdown('topbar-lang', true)}
           <select class="top-select" onchange="setDisplayCurrency(this.value)" title="מטבע תצוגה">
             <option value="USD" ${state.displayCurrency==='USD'?'selected':''}>$ USD</option>
             <option value="ILS" ${state.displayCurrency==='ILS'?'selected':''}>₪ ILS</option>
