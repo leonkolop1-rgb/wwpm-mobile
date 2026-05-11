@@ -214,6 +214,26 @@ function fmtCurrency(amountUSD, cur = 'USD') {
   return sym + n.toLocaleString();
 }
 
+// Predefined countries for the picker
+const COUNTRY_PRESETS = [
+  { name: 'ישראל',   flag: 'flags/israel.png',   currency: 'ILS' },
+  { name: 'דובאי',   flag: 'flags/uae.png',       currency: 'AED' },
+  { name: 'גאורגיה', flag: 'flags/georgia.png',   currency: 'GEL' },
+  { name: 'ספרד',    flag: 'flags/spain.png',      currency: 'EUR' },
+  { name: 'פורטוגל', flag: 'flags/portugal.png',  currency: 'EUR' },
+  { name: 'יוון',    flag: 'flags/greece.png',     currency: 'EUR' },
+  { name: 'קפריסין', flag: 'flags/cyprus.png',     currency: 'EUR' },
+  { name: 'גרמניה',  flag: 'flags/germany.png',    currency: 'EUR' },
+  { name: 'איטליה',  flag: 'flags/italy.png',      currency: 'EUR' },
+  { name: 'צרפת',    flag: 'flags/france.png',     currency: 'EUR' },
+  { name: 'בריטניה', flag: 'flags/gb.png',         currency: 'GBP' },
+  { name: 'פולין',   flag: 'flags/poland.png',     currency: 'EUR' },
+  { name: 'רומניה',  flag: 'flags/romania.png',    currency: 'EUR' },
+  { name: 'סרביה',   flag: 'flags/serbia.png',     currency: 'EUR' },
+  { name: 'ארה"ב',   flag: 'flags/us.png',          currency: 'USD' },
+  { name: 'רוסיה',   flag: 'flags/russia.png',     currency: 'USD' },
+];
+
 // Flag image paths (flags/ folder) — falls back to null for unlisted countries
 const FLAGIMGS = {
   'ישראל':'flags/israel.png','Israel':'flags/israel.png','Израиль':'flags/israel.png',
@@ -227,10 +247,12 @@ const FLAGIMGS = {
   'איטליה':'flags/italy.png','Italy':'flags/italy.png','Италия':'flags/italy.png',
   'צרפת':'flags/france.png','France':'flags/france.png','Франция':'flags/france.png',
   'דובאי':'flags/uae.png','Dubai':'flags/uae.png','ОАЭ':'flags/uae.png','UAE':'flags/uae.png',
+  'אמירויות':'flags/uae.png','איחוד האמירויות':'flags/uae.png','United Arab Emirates':'flags/uae.png',
   'פולין':'flags/poland.png','Poland':'flags/poland.png','Польша':'flags/poland.png',
   'רומניה':'flags/romania.png','Romania':'flags/romania.png','Румыния':'flags/romania.png',
-  'בריטניה':'flags/gb.png','UK':'flags/gb.png','Great Britain':'flags/gb.png','GB':'flags/gb.png',
+  'בריטניה':'flags/gb.png','UK':'flags/gb.png','Great Britain':'flags/gb.png','GB':'flags/gb.png','England':'flags/gb.png',
   'סרביה':'flags/serbia.png','Serbia':'flags/serbia.png','Сербия':'flags/serbia.png',
+  'רוסיה':'flags/russia.png','Russia':'flags/russia.png','Россия':'flags/russia.png',
 };
 // Emoji fallback for countries without a local image
 const FLAGS = {
@@ -240,9 +262,10 @@ const FLAGS = {
   'אוסטרליה':'🇦🇺','Australia':'🇦🇺',
 };
 function getFlagHtml(name, imgClass = 'country-flag-img', fallbackClass = 'country-flag') {
-  const img = FLAGIMGS[name];
-  if (img) return `<img src="${img}" class="${imgClass}" alt="${esc(name)}">`;
-  const emoji = FLAGS[name] || '🌍';
+  const n = (name || '').trim();
+  const img = FLAGIMGS[n] || FLAGIMGS[n.toUpperCase()] || FLAGIMGS[n.toLowerCase()];
+  if (img) return `<img src="${img}" class="${imgClass}" alt="${esc(n)}">`;
+  const emoji = FLAGS[n] || '🌍';
   return `<div class="${fallbackClass}">${emoji}</div>`;
 }
 
@@ -398,30 +421,18 @@ function renderHome() {
 
     <div id="add-country-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('add-country-modal')">
       <div class="modal-card">
-        <div class="modal-title">🌍 מדינה חדשה</div>
-        <div class="form-group">
-          <label>שם המדינה *</label>
-          <input type="text" id="nc-name" placeholder="למשל: ישראל" list="country-list" oninput="autoFillCountryCurrency(this.value)" />
-          <datalist id="country-list">
-            <option value="ישראל"><option value="גאורגיה"><option value="ספרד"><option value="פורטוגל">
-            <option value="יוון"><option value="קפריסין"><option value="גרמניה"><option value="איטליה">
-            <option value="צרפת"><option value="הולנד"><option value="דובאי"><option value='ארה"ב'>
-            <option value="Israel"><option value="Georgia"><option value="Spain"><option value="Portugal">
-            <option value="USA"><option value="UAE"><option value="Germany"><option value="France">
-          </datalist>
+        <div class="modal-title">🌍 בחר מדינה</div>
+        <input type="hidden" id="nc-name" value="">
+        <input type="hidden" id="nc-currency" value="">
+        <div class="country-picker-grid">
+          ${COUNTRY_PRESETS.map(p => `
+            <button class="country-picker-tile" id="cpt-${p.name}" onclick="selectCountryPreset('${esc(p.name)}','${p.flag}','${p.currency}')">
+              <img src="${p.flag}" class="cpt-flag" alt="${esc(p.name)}">
+              <span class="cpt-name">${esc(p.name)}</span>
+            </button>`).join('')}
         </div>
-        <div class="form-group">
-          <label>מטבע</label>
-          <select id="nc-currency">
-            <option value="ILS">₪ שקל (ILS)</option>
-            <option value="USD">$ דולר (USD)</option>
-            <option value="EUR">€ יורו (EUR)</option>
-            <option value="GBP">£ פאונד (GBP)</option>
-            <option value="GEL">₾ לארי (GEL)</option>
-            <option value="AED">د.إ דירהם (AED)</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:4px">
+        <div id="nc-selected-info" style="display:none;margin:10px 0;padding:10px 14px;background:rgba(99,102,241,0.1);border:1px solid var(--accent);border-radius:var(--radius-xs);font-size:0.88rem;color:var(--accent2);text-align:center"></div>
+        <div style="display:flex;gap:10px;margin-top:8px">
           <button class="btn-secondary" onclick="closeModal('add-country-modal')">ביטול</button>
           <button class="btn-primary" style="flex:2" onclick="submitAddCountry()">הוסף מדינה</button>
         </div>
@@ -2263,14 +2274,19 @@ const COUNTRY_CURRENCY_MAP = {
   'אנגליה':'GBP','England':'GBP','UK':'GBP','Britain':'GBP',
 };
 
-function autoFillCountryCurrency(name) {
-  const cur = COUNTRY_CURRENCY_MAP[name.trim()];
-  if (cur) document.getElementById('nc-currency').value = cur;
+function selectCountryPreset(name, flag, currency) {
+  document.getElementById('nc-name').value = name;
+  document.getElementById('nc-currency').value = currency;
+  document.querySelectorAll('.country-picker-tile').forEach(t => t.classList.remove('selected'));
+  const tile = document.getElementById('cpt-' + name);
+  if (tile) tile.classList.add('selected');
+  const info = document.getElementById('nc-selected-info');
+  if (info) { info.style.display = 'block'; info.innerHTML = `<img src="${flag}" style="width:24px;height:16px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-inline-end:6px"> <strong>${esc(name)}</strong> · ${currency}`; }
 }
 
 async function submitAddCountry() {
   const name = document.getElementById('nc-name').value.trim();
-  if (!name) { toast('נא למלא שם מדינה'); return; }
+  if (!name) { toast('נא לבחור מדינה'); return; }
   const currency = document.getElementById('nc-currency').value || 'USD';
   if (!state.data) state.data = { countries: [] };
   if (!state.data.countries) state.data.countries = [];
