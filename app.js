@@ -535,6 +535,34 @@ function renderCountry() {
           <button class="btn-primary" style="flex:2" onclick="submitQuickRent()">✓ שמור</button>
         </div>
       </div>
+    </div>
+
+    <div id="quick-update-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('quick-update-modal')">
+      <div class="modal-card">
+        <div class="modal-title">✏️ עדכון מהיר</div>
+        <div id="qu-prop-name" style="font-size:0.9rem;color:var(--text2);margin:-8px 0 14px;font-weight:600"></div>
+        <div class="form-group">
+          <label id="qu-value-label">שווי נוכחי</label>
+          <input type="number" id="qu-value" placeholder="0" inputmode="numeric" style="font-size:1.1rem;font-weight:700" />
+        </div>
+        <div class="form-group">
+          <label id="qu-rent-label">שכירות חודשית</label>
+          <input type="number" id="qu-rent" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>סטטוס</label>
+          <select id="qu-status">
+            <option value="rented">מושכר</option>
+            <option value="empty">ריק</option>
+            <option value="owned">בבעלות</option>
+            <option value="for_sale">למכירה</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('quick-update-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitQuickUpdate()">✓ שמור</button>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -550,13 +578,17 @@ function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
   const yld = p.currentValue > 0 && p.monthlyRent > 0 ? (p.monthlyRent * 12 / p.currentValue * 100).toFixed(1) : null;
   const canQuickRent = !state.viewOnly && countryId;
+  const canEdit = !state.viewOnly && countryId;
   return `
     <div class="prop-card" data-status="${p.status || ''}" data-searchname="${esc(((p.name||'')+' '+(p.city||'')+' '+(p.address||'')+' '+(p.status||'')).toLowerCase())}" onclick="goToProperty('${esc(p.id)}')">
       ${p.coverPhoto?.url ? `<div style="margin:-17px -18px 13px -44px;height:110px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0"><img src="${esc(p.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></div>` : ''}
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
-        ${canQuickRent ? `<button class="quick-rent-btn" onclick="openQuickRent('${esc(p.id)}','${esc(countryId)}',event)">💵+</button>` : ''}
+        <div style="display:flex;gap:4px;margin-inline-start:auto">
+          ${canEdit ? `<button class="quick-rent-btn" style="font-size:0.85rem" onclick="openQuickUpdate('${esc(p.id)}','${esc(countryId)}',event)" title="עדכון מהיר">✏️</button>` : ''}
+          ${canQuickRent ? `<button class="quick-rent-btn" onclick="openQuickRent('${esc(p.id)}','${esc(countryId)}',event)">💵+</button>` : ''}
+        </div>
       </div>
       <div class="prop-meta">
         ${p.city ? `<span>📍 ${esc(p.city)}</span>` : ''}
@@ -1157,6 +1189,9 @@ function renderAnalytics() {
           ${d.expenses ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">${fmtCurrency(Math.round(d.expenses), cur)}</span></div>` : ''}
         </div>`;}).join('')}
 
+        <!-- Value vs Purchase chart -->
+        ${renderValueVsPurchaseChart(countries)}
+
         <!-- Per country -->
         <div class="section-label">לפי מדינה</div>
         ${countries.map(c => {
@@ -1165,13 +1200,15 @@ function renderAnalytics() {
           const inv   = props.reduce((s, p) => s + (p.purchasePrice || 0), 0);
           const rent  = props.reduce((s, p) => s + (p.monthlyRent || 0), 0);
           const cur   = c.currency || (props[0] ? getCur(props[0]) : 'USD');
-          const flag  = FLAGS[c.name] || '🌍';
+          const flagHtml = FLAGIMGS[c.name]
+            ? `<img src="${FLAGIMGS[c.name]}" style="width:32px;height:22px;object-fit:cover;border-radius:5px;flex-shrink:0">`
+            : `<span style="font-size:1.5rem">${FLAGS[c.name]||'🌍'}</span>`;
           return `
             <div class="detail-card">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                <span style="font-size:1.5rem">${flag}</span>
+                ${flagHtml}
                 <span style="font-weight:700;font-size:1rem">${esc(c.name)}</span>
-                <span style="font-size:0.78rem;color:var(--muted);margin-right:auto">${props.length} נכסים</span>
+                <span style="font-size:0.78rem;color:var(--muted);margin-inline-start:auto">${props.length} נכסים</span>
               </div>
               <div class="detail-row"><span class="detail-label">שווי כולל</span><span class="detail-value">${fmtCurrency(Math.round(val), cur)}</span></div>
               <div class="detail-row"><span class="detail-label">רווח נייר</span><span class="detail-value" style="color:${val>=inv?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(val-inv), cur)}</span></div>
@@ -1231,6 +1268,46 @@ function renderYearlySummary(countries) {
     </div>`;
 }
 
+function renderValueVsPurchaseChart(countries) {
+  const data = countries.map(c => {
+    const props = c.properties || [];
+    const val = props.reduce((s, p) => s + (p.currentValue || 0), 0);
+    const inv = props.reduce((s, p) => s + (p.purchasePrice || 0), 0);
+    return { name: c.name, val, inv };
+  }).filter(d => d.val > 0 || d.inv > 0);
+  if (data.length < 1) return '';
+  const maxV = Math.max(...data.map(d => Math.max(d.val, d.inv))) || 1;
+  const W = 300, H = 80, barH = 20, gap = 10;
+  const totalH = data.length * (barH * 2 + gap) + gap;
+  const bars = data.map((d, i) => {
+    const y = gap + i * (barH * 2 + gap);
+    const wVal = (d.val / maxV * W).toFixed(1);
+    const wInv = (d.inv / maxV * W).toFixed(1);
+    const gainColor = d.val >= d.inv ? '#10b981' : '#ef4444';
+    const flagEl = FLAGIMGS[d.name]
+      ? `<image href="${FLAGIMGS[d.name]}" x="-38" y="${y + 4}" width="30" height="20" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 0 0 0 round 4px)"/>`
+      : `<text x="-8" y="${y + barH - 4}" text-anchor="middle" font-size="14">${FLAGS[d.name]||'🌍'}</text>`;
+    return `
+      ${flagEl}
+      <rect x="0" y="${y}" width="${wInv}" height="${barH}" rx="4" fill="rgba(99,102,241,0.35)"/>
+      <rect x="0" y="${y + barH + 2}" width="${wVal}" height="${barH}" rx="4" fill="${gainColor}" opacity="0.85"/>
+    `;
+  }).join('');
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">📊 השקעה מול שווי נוכחי</div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;font-size:0.72rem">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:8px;border-radius:2px;background:rgba(99,102,241,0.5);display:inline-block"></span>עלות רכישה</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:8px;border-radius:2px;background:#10b981;display:inline-block"></span>שווי נוכחי</span>
+      </div>
+      <div style="overflow-x:auto">
+        <svg width="${W + 44}" height="${totalH}" viewBox="-44 0 ${W + 44} ${totalH}" style="display:block">
+          ${bars}
+        </svg>
+      </div>
+    </div>`;
+}
+
 function renderPortfolioDonut(countries) {
   const COLORS = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#06b6d4','#84cc16'];
   const data = countries
@@ -1267,7 +1344,8 @@ function renderPortfolioDonut(countries) {
           ${data.map((d,i) => `
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${COLORS[i%COLORS.length]}"></div>
-              <span style="flex:1;font-size:0.8rem;font-weight:600">${FLAGS[d.name]||'🌍'} ${esc(d.name)}</span>
+              ${FLAGIMGS[d.name] ? `<img src="${FLAGIMGS[d.name]}" style="width:20px;height:13px;object-fit:cover;border-radius:2px;flex-shrink:0">` : `<span style="font-size:0.9rem">${FLAGS[d.name]||'🌍'}</span>`}
+              <span style="flex:1;font-size:0.8rem;font-weight:600">${esc(d.name)}</span>
               <span style="font-size:0.76rem;color:var(--muted);font-feature-settings:'tnum'">${(d.value/total*100).toFixed(0)}%</span>
             </div>`).join('')}
         </div>
@@ -1611,6 +1689,49 @@ async function submitQuickRent() {
   toast('שומר...');
   await saveData();
   toast('✓ שכ"ד נרשם');
+}
+
+// ===== QUICK UPDATE =====
+function openQuickUpdate(propId, countryId, evt) {
+  evt.stopPropagation();
+  haptic(6);
+  state._quPropId    = propId;
+  state._quCountryId = countryId;
+  const country  = (state.data?.countries || []).find(c => c.id === countryId);
+  const p        = (country?.properties  || []).find(p => p.id === propId);
+  if (!p || !country) return;
+  const cur    = country.currency || 'USD';
+  const curSym = CURRENCIES[cur] || cur;
+  const toDisp = v => v ? Math.round(v * (rates[cur] || 1)) : '';
+  document.getElementById('qu-prop-name').textContent    = p.name || p.city || '—';
+  document.getElementById('qu-value-label').textContent  = `שווי נוכחי (${curSym})`;
+  document.getElementById('qu-rent-label').textContent   = `שכירות חודשית (${curSym})`;
+  document.getElementById('qu-value').value  = toDisp(p.currentValue);
+  document.getElementById('qu-rent').value   = toDisp(p.monthlyRent);
+  document.getElementById('qu-status').value = p.status || 'owned';
+  showModal('quick-update-modal');
+  setTimeout(() => { const v = document.getElementById('qu-value'); v?.focus(); v?.select(); }, 100);
+}
+
+async function submitQuickUpdate() {
+  const country = (state.data?.countries || []).find(c => c.id === state._quCountryId);
+  const p       = (country?.properties  || []).find(p => p.id === state._quPropId);
+  if (!p || !country) return;
+  const cur  = country.currency || 'USD';
+  const rate = rates[cur] || 1;
+  const toUSD = v => { const n = parseFloat(v); return n > 0 ? n / rate : undefined; };
+  const newVal    = toUSD(document.getElementById('qu-value').value);
+  const newRent   = toUSD(document.getElementById('qu-rent').value);
+  const newStatus = document.getElementById('qu-status').value;
+  if (newVal  !== undefined) p.currentValue = newVal;
+  if (newRent !== undefined) p.monthlyRent  = newRent;
+  p.status = newStatus;
+  closeModal('quick-update-modal');
+  haptic(10);
+  toast('שומר...');
+  await saveData();
+  toast('✓ נכס עודכן');
+  render();
 }
 
 // ===== TOTAL RETURN CARD =====
