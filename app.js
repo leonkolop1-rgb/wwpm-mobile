@@ -1614,17 +1614,17 @@ function renderPortfolioSummary(countries) {
   const rentedCount    = allProps.filter(p => p.status === 'rented').length;
   const grossYieldPct  = totalValueUSD > 0 && totalRentUSD > 0 ? (totalRentUSD * 12 / totalValueUSD * 100).toFixed(1) : null;
   const cf = cashFlowUSD >= 0;
+  const annualCashFlowUSD = cashFlowUSD * 12;
+  const acf = annualCashFlowUSD >= 0;
   return `
     <div class="portfolio-card">
       <div class="portfolio-total-label">שווי תיק נכסים (${dc})</div>
       <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
       <div class="portfolio-stats">
-        <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
-        ${grossYieldPct ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תשואה ברוטו</div><div class="portfolio-stat-num">${grossYieldPct}%</div></div>` : ''}
-        ${totalRentUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalRentUSD, dc)}</div></div>` : ''}
-        ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, dc)}</div></div>` : ''}
-        ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>` : ''}
-        ${totalDebtUSD > 0 ? `<div class="portfolio-stat"><div class="portfolio-stat-label">הון עצמי</div><div class="portfolio-stat-num" style="color:rgba(129,140,248,0.95)">${fmtCurrency(Math.round(equityUSD), dc)}</div></div>` : ''}
+        <div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד חודשי</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
+        <div class="portfolio-stat"><div class="portfolio-stat-label">משכנתאות</div><div class="portfolio-stat-num" style="color:rgba(245,158,11,0.95)">${totalMortgUSD ? fmtCurrency(totalMortgUSD, dc) : '—'}</div></div>
+        <div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו/חודש</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>
+        <div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו/שנה</div><div class="portfolio-stat-num" style="color:${acf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${acf?'+':'−'}${fmtCurrency(Math.abs(annualCashFlowUSD), dc)}</div></div>
       </div>
     </div>`;
 }
