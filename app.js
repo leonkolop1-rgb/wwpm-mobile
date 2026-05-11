@@ -232,15 +232,16 @@ const LANG_META = {
 
 function renderLangDropdown(id, compact = false) {
   const cur = LANG_META[state.lang] || LANG_META.heb;
+  const flag = (f) => `<span class="cls-flag" style="background-image:url('${f}')"></span>`;
   const opts = Object.entries(LANG_META).map(([key, m]) => `
     <button class="cls-option${state.lang === key ? ' active' : ''}" onclick="setLangClose('${key}','${id}')">
-      <img src="${m.flag}" class="cls-flag" alt="">
+      ${flag(m.flag)}
       <span>${compact ? m.short : m.label}</span>
     </button>`).join('');
   return `
     <div class="custom-lang-select${compact ? ' compact' : ''}" id="${id}">
       <button class="cls-trigger" onclick="toggleCustomSelect('${id}')">
-        <img src="${cur.flag}" class="cls-flag" alt="">
+        ${flag(cur.flag)}
         <span class="cls-cur-label">${compact ? cur.short : cur.label}</span>
         <span class="cls-arrow">▾</span>
       </button>
