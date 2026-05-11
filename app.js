@@ -99,6 +99,7 @@ const state = {
   sortProps: 'default',
   searchQuery: '',
   adminUsers: null,
+  rentMonthSel: [],
 };
 
 // restore session
@@ -646,6 +647,101 @@ function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
     </div>`;
 }
 
+const HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function fmtMonthHeb(m) {
+  const [y, mo] = m.split('-');
+  return `${HEB_MONTHS[parseInt(mo) - 1]} ${y}`;
+}
+function lastNMonths(n) {
+  const months = [];
+  const d = new Date();
+  for (let i = 0; i < n; i++) {
+    months.push(d.toISOString().slice(0, 7));
+    d.setMonth(d.getMonth() - 1);
+  }
+  return months;
+}
+
+function toggleRentMonth(month) {
+  const idx = state.rentMonthSel.indexOf(month);
+  if (idx >= 0) state.rentMonthSel.splice(idx, 1);
+  else state.rentMonthSel.push(month);
+  const el = document.getElementById('rent-month-grid');
+  if (el) el.innerHTML = buildRentMonthGrid(
+    (state.data?.countries || []).find(c => c.id === state.currentCountryId)
+  );
+}
+
+function buildRentMonthGrid(country) {
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return '';
+  const paid = new Set((p.rentHistory || []).filter(r => !r.autoFilled).map(r => r.month));
+  return lastNMonths(12).map(m => {
+    const isPaid = paid.has(m);
+    const isSel  = state.rentMonthSel.includes(m);
+    return `<button onclick="toggleRentMonth('${m}')" class="rent-month-chip ${isPaid ? 'paid' : isSel ? 'selected' : ''}">
+      ${isPaid ? '✓ ' : isSel ? '☑ ' : '○ '}${fmtMonthHeb(m)}
+    </button>`;
+  }).join('');
+}
+
+function renderInlineRent(p, country, currency) {
+  const allPaid = [...(p.rentHistory || [])].filter(r => !r.autoFilled).sort((a, b) => b.month.localeCompare(a.month));
+  const total = allPaid.reduce((s, r) => s + (r.amount || 0), 0);
+  const defaultAmount = p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '';
+  return `
+  <div class="detail-card" style="padding-bottom:14px">
+    <div class="detail-card-title">💵 שכירות</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div class="value-tile" style="flex:1;margin:0;padding:10px 12px">
+        <div class="value-tile-label">סך הכל התקבל</div>
+        <div class="value-tile-num" style="color:var(--success);font-size:1.05rem">${fmtCurrency(Math.round(total), currency)}</div>
+      </div>
+      <div class="value-tile" style="flex:1;margin:0;padding:10px 12px">
+        <div class="value-tile-label">מספר תשלומים</div>
+        <div class="value-tile-num" style="font-size:1.05rem">${allPaid.length}</div>
+      </div>
+    </div>
+
+    ${!state.viewOnly ? `
+    <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px;font-weight:600">סמן חודשים לסימון כשולם:</div>
+    <div id="rent-month-grid" class="rent-month-grid">${buildRentMonthGrid(country)}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+      <input type="number" id="bulk-rent-amount" value="${defaultAmount}" placeholder="סכום" inputmode="numeric"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text);padding:9px 12px;font-size:0.95rem;font-family:var(--font-num);text-align:right">
+      <span style="color:var(--text2);font-size:0.85rem">${CURRENCIES[currency]||currency}</span>
+      <button onclick="submitBulkRent('${esc(currency)}')" class="btn-primary" style="flex:1;padding:9px 12px;font-size:0.88rem;white-space:nowrap">שמור נבחרים</button>
+    </div>` : ''}
+
+    ${allPaid.length ? `
+    <div style="font-size:0.8rem;color:var(--text2);margin-top:14px;margin-bottom:6px;font-weight:600;border-top:1px solid var(--border);padding-top:12px">היסטוריית תשלומים:</div>
+    ${allPaid.map(r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(99,102,241,0.07)">
+        <span style="color:var(--text2);font-size:0.85rem">${fmtMonthHeb(r.month)}</span>
+        <span style="color:var(--success);font-weight:700;font-family:var(--font-num);font-size:0.95rem">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+        ${!state.viewOnly ? `<button onclick="deleteRentPayment('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;padding:2px 6px;opacity:0.6">🗑</button>` : ''}
+      </div>`).join('')}` : ''}
+  </div>`;
+}
+
+async function submitBulkRent(currency) {
+  if (state.rentMonthSel.length === 0) { alert('סמן לפחות חודש אחד'); return; }
+  const amountDisplay = parseFloat(document.getElementById('bulk-rent-amount')?.value);
+  if (!amountDisplay || amountDisplay <= 0) { alert('הזן סכום תקין'); return; }
+  const amountUSD = amountDisplay / (rates[currency] || 1);
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  if (!p.rentHistory) p.rentHistory = [];
+  for (const month of state.rentMonthSel) {
+    p.rentHistory = p.rentHistory.filter(r => r.month !== month || r.autoFilled);
+    p.rentHistory.push({ id: uid(), month, amount: amountUSD, paymentCurrency: currency, autoFilled: false });
+  }
+  state.rentMonthSel = [];
+  await saveData();
+  render();
+}
+
 function renderProperty() {
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
@@ -672,11 +768,6 @@ function renderProperty() {
   // Tenant
   const tenant = p.tenantInfo || {};
 
-  // Rent history — last 3 months sorted by month desc
-  const rentHistory = [...(p.rentHistory || [])]
-    .filter(r => !r.autoFilled)
-    .sort((a, b) => b.month.localeCompare(a.month))
-    .slice(0, 3);
 
   const row = (label, value, color = '') => value ? `
     <div class="detail-row">
@@ -752,16 +843,8 @@ function renderProperty() {
           ${row('סיום שכירות', tenant.endDate ? new Date(tenant.endDate).toLocaleDateString('he-IL') : '')}
         </div>` : ''}
 
-        <!-- Rent history -->
-        ${rentHistory.length ? `
-        <div class="detail-card">
-          <div class="detail-card-title">💵 תשלומי שכירות אחרונים</div>
-          ${rentHistory.map(r => `
-            <div class="mortgage-row">
-              <span style="color:var(--muted)">${r.month || ''}</span>
-              <span style="color:var(--success);font-weight:700">${fmtCurrency(r.amount, r.paymentCurrency || p.currency)}</span>
-            </div>`).join('')}
-        </div>` : ''}
+        <!-- Unified rent panel -->
+        ${renderInlineRent(p, country, currency)}
 
         <!-- Mortgages -->
         <div class="detail-card">
@@ -814,11 +897,6 @@ function renderProperty() {
           ${brokerages.length ? `<div class="expense-cat-row" onclick="goToExpenses('brokerage')"><span>🤝 תיווך</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(brokerages.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
         </div>` : ''}
 
-        <!-- Rent history shortcut — always visible -->
-        <div class="expense-cat-row" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:0" onclick="goToRentHistory()">
-          <span>💵 היסטוריית שכירות</span>
-          <span class="expense-cat-right"><span style="color:var(--muted)">${(p.rentHistory||[]).filter(r=>!r.autoFilled).length} תשלומים</span><span class="chevron">›</span></span>
-        </div>
 
         <!-- Lease countdown -->
         ${(() => {
