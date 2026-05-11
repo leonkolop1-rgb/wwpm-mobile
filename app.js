@@ -1,5 +1,8 @@
 'use strict';
 
+// ===== VERSION =====
+const APP_VERSION = 51;
+
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8lcFaV4BThB-OHroEqjYTw_7ZKJrz7F';
@@ -2648,6 +2651,7 @@ document.addEventListener('touchend', e => {
 let _swReg = null;
 
 function applyUpdate() {
+  localStorage.setItem('wwpm-version', APP_VERSION);
   if (_swReg?.waiting) {
     _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
   } else {
@@ -2655,26 +2659,37 @@ function applyUpdate() {
   }
 }
 
+function checkVersion() {
+  const stored = parseInt(localStorage.getItem('wwpm-version') || '0');
+  if (stored > 0 && stored < APP_VERSION) {
+    showUpdateBanner();
+  } else {
+    localStorage.setItem('wwpm-version', APP_VERSION);
+  }
+}
+
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {
       _swReg = reg;
-      // Show banner if a new SW is already waiting
+      reg.update();
       if (reg.waiting) showUpdateBanner();
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
+          if (nw.state === 'installed') showUpdateBanner();
         });
       });
-      // Force update check when app becomes visible
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
       });
     }).catch(() => {});
-    // Reload page when new SW takes control
-    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      localStorage.setItem('wwpm-version', APP_VERSION);
+      location.reload();
+    });
   }
+  checkVersion();
   window.addEventListener('online',  updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
