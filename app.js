@@ -84,6 +84,7 @@ const state = {
   isAdmin: false,
   data: null,
   lang: localStorage.getItem('wwpm-lang') || 'heb',
+  displayCurrency: localStorage.getItem('wwpm-display-cur') || 'USD',
   loading: false,
   error: null,
   currentCountryId: null,
@@ -244,13 +245,15 @@ function renderLogin() {
   return `
     <div class="login-page">
       <div class="login-card">
-        <div class="login-logo">🏠</div>
+        <img src="icon-192.png" class="login-logo" alt="WWPM">
         <div class="login-title">World Wide Property Manager</div>
         <div class="login-subtitle">by Leon</div>
         <div class="lang-switcher">
-          <button class="lang-btn ${state.lang==='heb'?'active':''}" onclick="setLang('heb')">עב</button>
-          <button class="lang-btn ${state.lang==='eng'?'active':''}" onclick="setLang('eng')">EN</button>
-          <button class="lang-btn ${state.lang==='rus'?'active':''}" onclick="setLang('rus')">РУ</button>
+          <select class="login-lang-select" onchange="setLang(this.value)">
+            <option value="heb" ${state.lang==='heb'?'selected':''}>🇮🇱 עברית</option>
+            <option value="eng" ${state.lang==='eng'?'selected':''}>🇺🇸 English</option>
+            <option value="rus" ${state.lang==='rus'?'selected':''}>🇷🇺 Русский</option>
+          </select>
         </div>
         <form class="login-form" onsubmit="doLogin(event)">
           <div class="form-group">
@@ -274,7 +277,7 @@ function renderLogin() {
 function renderSplash() {
   return `
     <div class="splash">
-      <div class="splash-logo">🏠</div>
+      <img src="icon-192.png" class="splash-logo" alt="WWPM">
       <div class="splash-title">${t('loading')}</div>
       <div class="spinner"></div>
     </div>`;
@@ -291,7 +294,19 @@ function renderHome() {
           <button class="icon-btn" onclick="shareApp()" title="שתף">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="ניהול">👑</button>` : ''}
-          <button class="icon-btn" onclick="cycleLang()" title="שפה">🌐</button>
+          <select class="top-select" onchange="setLang(this.value)" title="שפה">
+            <option value="heb" ${state.lang==='heb'?'selected':''}>🇮🇱 עב</option>
+            <option value="eng" ${state.lang==='eng'?'selected':''}>🇺🇸 EN</option>
+            <option value="rus" ${state.lang==='rus'?'selected':''}>🇷🇺 РУ</option>
+          </select>
+          <select class="top-select" onchange="setDisplayCurrency(this.value)" title="מטבע תצוגה">
+            <option value="USD" ${state.displayCurrency==='USD'?'selected':''}>$ USD</option>
+            <option value="ILS" ${state.displayCurrency==='ILS'?'selected':''}>₪ ILS</option>
+            <option value="EUR" ${state.displayCurrency==='EUR'?'selected':''}>€ EUR</option>
+            <option value="GBP" ${state.displayCurrency==='GBP'?'selected':''}>£ GBP</option>
+            <option value="GEL" ${state.displayCurrency==='GEL'?'selected':''}>₾ GEL</option>
+            <option value="AED" ${state.displayCurrency==='AED'?'selected':''}>د.إ AED</option>
+          </select>
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
         </div>
       </header>
@@ -1262,6 +1277,7 @@ function renderPortfolioSummary(countries) {
   const today = new Date();
   const allProps = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _cur: c.currency || 'USD' })));
   if (!allProps.length) return '';
+  const dc = state.displayCurrency || 'USD';
   const totalValueUSD  = allProps.reduce((s, p) => s + (p.currentValue  || 0), 0);
   const totalRentUSD   = allProps.reduce((s, p) => s + (p.monthlyRent   || 0), 0);
   const totalMortgUSD  = allProps.reduce((s, p) =>
@@ -1273,12 +1289,12 @@ function renderPortfolioSummary(countries) {
   const cf = cashFlowUSD >= 0;
   return `
     <div class="portfolio-card">
-      <div class="portfolio-total-label">שווי תיק נכסים (USD)</div>
-      <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, 'USD')}</div>
+      <div class="portfolio-total-label">שווי תיק נכסים (${dc})</div>
+      <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
       <div class="portfolio-stats">
-        ${totalRentUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalRentUSD, 'USD')}</div></div>` : ''}
-        ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, 'USD')}</div></div>` : ''}
-        ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), 'USD')}</div></div>` : ''}
+        ${totalRentUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalRentUSD, dc)}</div></div>` : ''}
+        ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, dc)}</div></div>` : ''}
+        ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>` : ''}
         ${grossYieldPct ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תשואה ברוטו</div><div class="portfolio-stat-num">${grossYieldPct}%</div></div>` : ''}
         <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
       </div>
@@ -1707,6 +1723,12 @@ function setLang(lang) {
 function cycleLang() {
   const langs = ['heb', 'eng', 'rus'];
   setLang(langs[(langs.indexOf(state.lang) + 1) % langs.length]);
+}
+
+function setDisplayCurrency(cur) {
+  state.displayCurrency = cur;
+  localStorage.setItem('wwpm-display-cur', cur);
+  render();
 }
 
 async function doLogin(e) {
