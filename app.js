@@ -377,7 +377,7 @@ function renderCountry() {
           </div>` : ''}
         ${props.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
-          : props.map(p => renderPropertyCard(p, currency)).join('')
+          : props.map(p => renderPropertyCard(p, currency, country.id)).join('')
         }
         <button onclick="deleteCountry('${esc(country.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק מדינה</button>
       </div>
@@ -433,6 +433,20 @@ function renderCountry() {
           <label>שכירות חודשית (${curSym})</label>
           <input type="number" id="np-rent" placeholder="0" inputmode="numeric" />
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label>חדרים</label>
+            <input type="number" id="np-rooms" placeholder="3" inputmode="decimal" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label>שטח מ"ר</label>
+            <input type="number" id="np-area" placeholder="80" inputmode="numeric" />
+          </div>
+          <div class="form-group">
+            <label>קומה</label>
+            <input type="number" id="np-floor" placeholder="2" inputmode="numeric" />
+          </div>
+        </div>
         <div class="form-group">
           <label>תאריך קנייה</label>
           <input type="date" id="np-date" />
@@ -442,10 +456,29 @@ function renderCountry() {
           <button class="btn-primary" style="flex:2" onclick="submitAddProperty('${esc(currency)}')">הוסף נכס</button>
         </div>
       </div>
+    </div>
+
+    <div id="quick-rent-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('quick-rent-modal')">
+      <div class="modal-card">
+        <div class="modal-title">💵 שכ"ד מהיר</div>
+        <div id="qr-prop-name" style="font-size:0.9rem;color:var(--text2);margin:-8px 0 14px;font-weight:600"></div>
+        <div class="form-group">
+          <label>חודש</label>
+          <input type="month" id="qr-month" />
+        </div>
+        <div class="form-group">
+          <label id="qr-cur-label">סכום</label>
+          <input type="number" id="qr-amount" placeholder="0" inputmode="numeric" style="font-size:1.3rem;font-weight:700" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('quick-rent-modal')">ביטול</button>
+          <button class="btn-primary" style="flex:2" onclick="submitQuickRent()">✓ שמור</button>
+        </div>
+      </div>
     </div>`;
 }
 
-function renderPropertyCard(p, countryCurrency = 'USD') {
+function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
   const cur = countryCurrency || p.currency || 'USD';
   const statusMap = { rented: 'status_rented', owned: 'status_owned', for_sale: 'status_for_sale', empty: 'status_empty' };
   const typeMap = { apartment: 'type_apartment', house: 'type_house', commercial: 'type_commercial', land: 'type_land', parking: 'type_parking', storage: 'type_storage' };
@@ -455,17 +488,21 @@ function renderPropertyCard(p, countryCurrency = 'USD') {
   const typeLabel = typeKey ? t(typeKey) : '';
   const statusColor = p.status === 'rented' ? 'var(--success)' : p.status === 'for_sale' ? 'var(--warning)' : 'var(--muted)';
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
+  const yld = p.currentValue > 0 && p.monthlyRent > 0 ? (p.monthlyRent * 12 / p.currentValue * 100).toFixed(1) : null;
+  const canQuickRent = !state.viewOnly && countryId;
   return `
     <div class="prop-card" data-status="${p.status || ''}" data-searchname="${esc(((p.name||'')+' '+(p.city||'')+' '+(p.address||'')+' '+(p.status||'')).toLowerCase())}" onclick="goToProperty('${esc(p.id)}')">
       ${p.coverPhoto?.url ? `<div style="margin:-17px -18px 13px -44px;height:110px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0"><img src="${esc(p.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></div>` : ''}
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
+        ${canQuickRent ? `<button class="quick-rent-btn" onclick="openQuickRent('${esc(p.id)}','${esc(countryId)}',event)">💵+</button>` : ''}
       </div>
       <div class="prop-meta">
         ${p.city ? `<span>📍 ${esc(p.city)}</span>` : ''}
         ${typeLabel ? `<span>🏠 ${typeLabel}</span>` : ''}
         ${pct !== 100 ? `<span>👤 ${pct}%</span>` : ''}
+        ${yld ? `<span class="yield-badge">📈 ${yld}%</span>` : ''}
       </div>
       <div class="prop-values">
         ${p.currentValue ? `
@@ -681,6 +718,9 @@ function renderProperty() {
           <div class="detail-card-title">📝 הערות</div>
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
+
+        <!-- All files -->
+        ${renderAllFiles(p)}
 
         ${!state.viewOnly ? `<button onclick="deleteProperty('${esc(p.id)}')" style="width:100%;background:none;border:1px solid var(--danger);border-radius:var(--radius-sm);color:var(--danger);font-size:0.9rem;font-weight:600;padding:13px;cursor:pointer;margin-top:4px">🗑 מחק נכס</button>` : ''}
 
@@ -1035,6 +1075,7 @@ function renderAnalytics() {
 
         <!-- Summary -->
         <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
+        ${renderTotalReturn(countries)}
         ${renderPortfolioDonut(countries)}
         ${renderRentIncomeChart(countries)}
         ${renderYearlySummary(countries)}
@@ -1471,6 +1512,99 @@ async function uploadCoverPhoto() {
   input.click();
 }
 
+// ===== QUICK RENT =====
+function openQuickRent(propId, countryId, evt) {
+  evt.stopPropagation();
+  haptic(6);
+  state._qrPropId    = propId;
+  state._qrCountryId = countryId;
+  const country = (state.data?.countries || []).find(c => c.id === countryId);
+  const p       = (country?.properties  || []).find(p => p.id === propId);
+  if (!p || !country) return;
+  const currency = country.currency || 'USD';
+  const curSym   = CURRENCIES[currency] || currency;
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const prefill  = p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '';
+  document.getElementById('qr-prop-name').textContent  = p.name || p.city || '—';
+  document.getElementById('qr-cur-label').textContent  = `סכום (${curSym})`;
+  document.getElementById('qr-month').value  = nowMonth;
+  document.getElementById('qr-amount').value = prefill;
+  showModal('quick-rent-modal');
+  setTimeout(() => { const a = document.getElementById('qr-amount'); a?.focus(); a?.select(); }, 100);
+}
+
+async function submitQuickRent() {
+  const propId    = state._qrPropId;
+  const countryId = state._qrCountryId;
+  const month  = document.getElementById('qr-month').value;
+  const amount = parseFloat(document.getElementById('qr-amount').value);
+  if (!month || !amount || amount <= 0) { toast('נא למלא חודש וסכום'); return; }
+  const country   = (state.data?.countries || []).find(c => c.id === countryId);
+  const p         = (country?.properties  || []).find(p => p.id === propId);
+  if (!p) return;
+  const amountUSD = amount / (rates[country.currency || 'USD'] || 1);
+  if (!p.rentHistory) p.rentHistory = [];
+  p.rentHistory = p.rentHistory.filter(r => r.month !== month || r.autoFilled);
+  p.rentHistory.push({ id: uid(), month, amount: amountUSD, paymentCurrency: country.currency || 'USD', autoFilled: false });
+  closeModal('quick-rent-modal');
+  haptic(10);
+  toast('שומר...');
+  await saveData();
+  toast('✓ שכ"ד נרשם');
+}
+
+// ===== TOTAL RETURN CARD =====
+function renderTotalReturn(countries) {
+  const allProps = countries.flatMap(c => (c.properties || []).map(p => ({ ...p })));
+  const totalInvested = allProps.reduce((s, p) => s + (p.purchasePrice || 0), 0);
+  if (!totalInvested) return '';
+  const totalCurrent = allProps.reduce((s, p) => s + (p.currentValue || 0), 0);
+  const capitalGain  = totalCurrent - totalInvested;
+  const totalRentRec = allProps.reduce((s, p) =>
+    s + (p.rentHistory || []).filter(r => !r.autoFilled).reduce((rs, r) => rs + (r.amount || 0), 0), 0);
+  const totalExp = allProps.reduce((s, p) =>
+    s + [...(p.maintenance||[]),...(p.improvements||[]),...(p.oneTimeExpenses||[]),...(p.tax?.payments||[]),...(p.brokerages||[])]
+      .reduce((es, e) => es + (Number(e.amount) || 0), 0), 0);
+  const netReturn = capitalGain + totalRentRec - totalExp;
+  const roi = totalInvested > 0 ? (netReturn / totalInvested * 100).toFixed(1) : null;
+  const gainPos = capitalGain >= 0;
+  const netPos  = netReturn >= 0;
+  return `
+    <div class="detail-card" style="position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:2.5px;background:${netPos ? 'var(--gradient-success)' : 'var(--gradient-danger)'}"></div>
+      <div class="detail-card-title" style="margin-top:6px">🏆 תשואה כוללת (USD)</div>
+      <div class="detail-row"><span class="detail-label">סה"כ הושקע</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(totalInvested), 'USD')}</span></div>
+      <div class="detail-row"><span class="detail-label">שווי נוכחי</span><span class="detail-value">${fmtCurrency(Math.round(totalCurrent), 'USD')}</span></div>
+      <div class="detail-row"><span class="detail-label">רווח הון</span><span class="detail-value" style="color:${gainPos?'var(--success)':'var(--danger)'}">${gainPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(capitalGain)), 'USD')}</span></div>
+      ${totalRentRec ? `<div class="detail-row"><span class="detail-label">שכ"ד שהתקבל סה"כ</span><span class="detail-value" style="color:var(--success)">+${fmtCurrency(Math.round(totalRentRec), 'USD')}</span></div>` : ''}
+      ${totalExp ? `<div class="detail-row"><span class="detail-label">סך הוצאות</span><span class="detail-value" style="color:var(--danger)">−${fmtCurrency(Math.round(totalExp), 'USD')}</span></div>` : ''}
+      <div class="detail-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+        <span class="detail-label" style="font-weight:800">תשואה נטו כוללת</span>
+        <span class="detail-value" style="font-weight:800;color:${netPos?'var(--success)':'var(--danger)'};font-size:1.08rem">${netPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(netReturn)), 'USD')}${roi ? ` (${roi}%)` : ''}</span>
+      </div>
+    </div>`;
+}
+
+// ===== ALL FILES =====
+function renderAllFiles(p) {
+  const allFiles = [
+    ...(p.maintenance     || []).flatMap(e => e.files || []),
+    ...(p.improvements    || []).flatMap(e => e.files || []),
+    ...(p.oneTimeExpenses || []).flatMap(e => e.files || []),
+    ...(p.tax?.payments   || []).flatMap(e => e.files || []),
+    ...(p.brokerages      || []).flatMap(e => e.files || []),
+    ...(p.mortgages       || []).flatMap(m => m.files || []),
+  ];
+  if (!allFiles.length) return '';
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">📎 מסמכים מצורפים (${allFiles.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+        ${allFiles.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener" class="file-chip" style="font-size:0.78rem;padding:5px 10px">📎 ${esc(f.name)}</a>`).join('')}
+      </div>
+    </div>`;
+}
+
 // ===== UPDATE BANNER =====
 function showUpdateBanner() {
   const id = '_update-banner';
@@ -1790,6 +1924,9 @@ async function submitAddProperty(currency) {
   const toUSD = v => { const n = parseFloat(v); return n > 0 ? n / rate : undefined; };
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
   if (!country) return;
+  const npRooms = parseFloat(document.getElementById('np-rooms')?.value);
+  const npArea  = parseFloat(document.getElementById('np-area')?.value);
+  const npFloor = document.getElementById('np-floor')?.value;
   const newProp = {
     id: uid(),
     name,
@@ -1801,6 +1938,9 @@ async function submitAddProperty(currency) {
     purchasePrice: toUSD(document.getElementById('np-purchase').value),
     monthlyRent: toUSD(document.getElementById('np-rent').value),
     purchaseDate: document.getElementById('np-date').value || undefined,
+    rooms: npRooms > 0 ? npRooms : undefined,
+    area:  npArea  > 0 ? npArea  : undefined,
+    floor: npFloor !== '' && npFloor != null ? parseInt(npFloor) : undefined,
     rentHistory: [], maintenance: [], improvements: [], oneTimeExpenses: [], mortgages: [], brokerages: [],
   };
   if (!country.properties) country.properties = [];

@@ -1001,6 +1001,39 @@ html, body {
   font-weight: 600;
 }
 
+/* ===== QUICK RENT BUTTON ===== */
+.quick-rent-btn {
+  background: var(--success-dim);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: var(--success);
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.01em;
+  transition: background var(--transition);
+}
+.quick-rent-btn:active { background: rgba(16,185,129,0.22); }
+
+/* ===== YIELD BADGE ===== */
+.yield-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 7px;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  font-feature-settings: 'tnum';
+}
+
 /* ===== COUNTRY SUMMARY CARD ===== */
 .country-summary-card {
   background: var(--surface);
