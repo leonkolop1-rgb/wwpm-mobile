@@ -538,6 +538,7 @@ function renderProperty() {
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
         <div class="top-bar-actions">
+          ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="תמונת נכס">📷</button>` : ''}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
           <button class="icon-btn" onclick="window.print()" title="הדפס">🖨️</button>
         </div>
@@ -547,8 +548,8 @@ function renderProperty() {
 
         <!-- Cover photo -->
         ${p.coverPhoto?.url
-          ? `<div style="position:relative"><img src="${esc(p.coverPhoto.url)}" class="prop-cover" loading="lazy" />${!state.viewOnly ? `<button onclick="uploadCoverPhoto()" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.6);border:none;border-radius:10px;color:white;font-size:0.75rem;font-weight:600;padding:7px 12px;cursor:pointer;backdrop-filter:blur(8px)">📷 החלף</button>` : ''}</div>`
-          : (!state.viewOnly ? `<button onclick="uploadCoverPhoto()" class="prop-cover-placeholder">📷 הוסף תמונת נכס</button>` : '')}
+          ? `<div style="position:relative"><img src="${esc(p.coverPhoto.url)}" class="prop-cover" loading="lazy" />${!state.viewOnly ? `<button onclick="uploadCoverPhoto()" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.65);border:none;border-radius:10px;color:white;font-size:0.75rem;font-weight:600;padding:7px 12px;cursor:pointer;backdrop-filter:blur(8px)">📷 החלף</button>` : ''}</div>`
+          : ''}
 
         <!-- Badges -->
         <div style="display:flex;gap:8px;flex-wrap:wrap">
