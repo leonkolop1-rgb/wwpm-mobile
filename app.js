@@ -294,7 +294,11 @@ function render() {
   if (!app) return;
   if (state.view === 'login') {
     app.innerHTML = renderLogin();
-    setTimeout(() => document.getElementById('login-username')?.focus(), 50);
+    setTimeout(() => {
+      const lastUser = localStorage.getItem('wwpm-last-user');
+      const el = document.getElementById(lastUser ? 'login-password' : 'login-username');
+      el?.focus();
+    }, 50);
   } else if (state.view === 'loading-data') {
     app.innerHTML = renderSplash();
     loadUserData();
@@ -328,7 +332,7 @@ function renderLogin() {
         <form class="login-form" onsubmit="doLogin(event)">
           <div class="form-group">
             <label>${t('username')}</label>
-            <input type="text" id="login-username" autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="${t('username')}">
+            <input type="text" id="login-username" autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="${t('username')}" value="${esc(localStorage.getItem('wwpm-last-user') || '')}">
           </div>
           <div class="form-group">
             <label>${t('password')}</label>
@@ -2003,6 +2007,7 @@ async function doLogin(e) {
     if (!row) { state.error = t('err_not_found'); state.loading = false; render(); return; }
     if (row.password_hash !== hash) { state.error = t('err_wrong_pass'); state.loading = false; render(); return; }
     sb.insert('login_events', { username }).catch(() => {});
+    localStorage.setItem('wwpm-last-user', username);
     const session = { username, isAdmin: row.is_admin || username === 'Leon' };
     localStorage.setItem('wwpm-session', JSON.stringify(session));
     state.currentUser = username;
