@@ -363,6 +363,7 @@ function renderHome() {
       </div>
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.viewOwner || state.currentUser)}</span>
+        <span id="online-dot" class="online-dot" title="מחובר"></span>
       </div>
     </div>
 
@@ -718,7 +719,7 @@ function renderProperty() {
         <div class="detail-card">
           <div class="detail-card-title">🔑 פרטי שוכר</div>
           ${row('שם שוכר', tenant.name)}
-          ${row('טלפון', tenant.phone)}
+          ${tenant.phone ? row('טלפון', `<a href="tel:${esc(tenant.phone)}" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-weight:700;letter-spacing:0.01em">📞 ${esc(tenant.phone)}</a>`) : ''}
           ${row('תחילת שכירות', tenant.startDate ? new Date(tenant.startDate).toLocaleDateString('he-IL') : '')}
           ${row('סיום שכירות', tenant.endDate ? new Date(tenant.endDate).toLocaleDateString('he-IL') : '')}
         </div>` : ''}
@@ -1170,6 +1171,7 @@ function renderAnalytics() {
         ${renderTotalReturn(countries)}
         ${renderPortfolioDonut(countries)}
         ${renderRentIncomeChart(countries)}
+        ${renderMonthlyPnL(countries)}
         ${renderYearlySummary(countries)}
 
         ${Object.entries(byCurrency).map(([cur, d]) => {
@@ -1237,6 +1239,63 @@ function renderAnalytics() {
           </div>`;}).join('')}
 
       </div>
+    </div>`;
+}
+
+function renderMonthlyPnL(countries) {
+  const today = new Date();
+  const monthly = {};
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthly[key] = { income: 0, expense: 0 };
+  }
+  for (const c of countries) {
+    for (const p of c.properties || []) {
+      for (const r of p.rentHistory || []) {
+        if (r.autoFilled || !r.month || !r.amount) continue;
+        if (monthly[r.month] !== undefined) monthly[r.month].income += r.amount;
+      }
+      const expenses = [...(p.maintenance||[]),...(p.improvements||[]),...(p.oneTimeExpenses||[]),...(p.tax?.payments||[]),...(p.brokerages||[])];
+      for (const e of expenses) {
+        if (!e.date || !e.amount) continue;
+        const key = e.date.slice(0,7);
+        if (monthly[key] !== undefined) monthly[key].expense += (Number(e.amount) || 0);
+      }
+    }
+  }
+  const entries = Object.entries(monthly).sort(([a],[b]) => a.localeCompare(b));
+  const maxV = Math.max(...entries.map(([,d]) => Math.max(d.income, d.expense))) || 0;
+  if (maxV === 0) return '';
+  const dc = state.displayCurrency || 'USD';
+  const W = 300, H = 80, n = entries.length;
+  const slotW = W / n;
+  const bw = Math.max(4, slotW / 2 - 2);
+  const curMonth = today.toISOString().slice(0,7);
+  const bars = entries.map(([month, d], i) => {
+    const x = i * slotW;
+    const bhI = Math.max(d.income  > 0 ? 2 : 0, (d.income  / maxV) * H);
+    const bhE = Math.max(d.expense > 0 ? 2 : 0, (d.expense / maxV) * H);
+    const isCur = month === curMonth;
+    const label = month.slice(5);
+    return `
+      <rect x="${(x+1).toFixed(1)}" y="${(H-bhI).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhI.toFixed(1)}" rx="2" fill="#10b981" opacity="${isCur?1:0.65}"/>
+      <rect x="${(x+bw+2).toFixed(1)}" y="${(H-bhE).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhE.toFixed(1)}" rx="2" fill="#ef4444" opacity="${isCur?1:0.55}"/>
+      ${i%2===0||n<=6 ? `<text x="${(x+slotW/2).toFixed(1)}" y="${H+14}" text-anchor="middle" fill="var(--muted)" font-size="8" font-family="-apple-system,sans-serif">${label}</text>` : ''}`;
+  }).join('');
+  const totI = entries.reduce((s,[,d])=>s+d.income,0);
+  const totE = entries.reduce((s,[,d])=>s+d.expense,0);
+  const net = totI - totE;
+  const netPos = net >= 0;
+  return `
+    <div class="detail-card">
+      <div class="detail-card-title">📊 הכנסות מול הוצאות — 12 חודשים</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;font-size:0.72rem;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:8px;border-radius:2px;background:#10b981;display:inline-block"></span>הכנסות</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:8px;border-radius:2px;background:#ef4444;display:inline-block"></span>הוצאות</span>
+        <span style="margin-inline-start:auto;font-weight:700;color:${netPos?'var(--success)':'var(--danger)'}">נטו ${netPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(net)),dc)}</span>
+      </div>
+      <svg width="${W}" height="${H+20}" viewBox="0 0 ${W} ${H+20}" style="display:block;overflow:visible;width:100%;max-width:${W}px">${bars}</svg>
     </div>`;
 }
 
@@ -1406,6 +1465,12 @@ function renderPortfolioSummary(countries) {
   const totalMortgUSD  = allProps.reduce((s, p) =>
     s + (p.mortgages || []).filter(m => m.endDate && new Date(m.endDate) > today)
       .reduce((ms, m) => ms + (m.monthlyPayment || 0), 0), 0);
+  const totalDebtUSD = allProps.reduce((s, p) =>
+    s + (p.mortgages || []).filter(m => m.endDate && new Date(m.endDate) > today).reduce((ms, m) => {
+      const months = Math.max(0, Math.ceil((new Date(m.endDate) - today) / (1000 * 60 * 60 * 24 * 30.44)));
+      return ms + (m.monthlyPayment || 0) * months;
+    }, 0), 0);
+  const equityUSD      = totalValueUSD - totalDebtUSD;
   const cashFlowUSD    = totalRentUSD - totalMortgUSD;
   const rentedCount    = allProps.filter(p => p.status === 'rented').length;
   const grossYieldPct  = totalValueUSD > 0 && totalRentUSD > 0 ? (totalRentUSD * 12 / totalValueUSD * 100).toFixed(1) : null;
@@ -1419,6 +1484,7 @@ function renderPortfolioSummary(countries) {
         ${totalMortgUSD ? `<div class="portfolio-stat"><div class="portfolio-stat-label">משכנתא/חודש</div><div class="portfolio-stat-num">${fmtCurrency(totalMortgUSD, dc)}</div></div>` : ''}
         ${(totalRentUSD || totalMortgUSD) ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>` : ''}
         ${grossYieldPct ? `<div class="portfolio-stat"><div class="portfolio-stat-label">תשואה ברוטו</div><div class="portfolio-stat-num">${grossYieldPct}%</div></div>` : ''}
+        ${totalDebtUSD > 0 ? `<div class="portfolio-stat"><div class="portfolio-stat-label">הון עצמי משוער</div><div class="portfolio-stat-num" style="color:rgba(129,140,248,0.95)">${fmtCurrency(Math.round(equityUSD), dc)}</div></div>` : ''}
         <div class="portfolio-stat"><div class="portfolio-stat-label">מושכרים</div><div class="portfolio-stat-num">${rentedCount}/${allProps.length}</div></div>
       </div>
     </div>`;
@@ -1875,6 +1941,11 @@ function updateOnlineStatus() {
     }
   } else {
     el?.remove();
+  }
+  const dot = document.getElementById('online-dot');
+  if (dot) {
+    dot.className = navigator.onLine ? 'online-dot online' : 'online-dot offline';
+    dot.title = navigator.onLine ? 'מחובר' : 'לא מחובר';
   }
 }
 
