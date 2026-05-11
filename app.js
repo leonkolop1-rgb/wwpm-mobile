@@ -1,7 +1,7 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 51;
+const APP_VERSION = 52;
 
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
@@ -1614,21 +1614,37 @@ function renderPortfolioSummary(countries) {
     }, 0), 0);
   const equityUSD      = totalValueUSD - totalDebtUSD;
   const cashFlowUSD    = totalRentUSD - totalMortgUSD;
-  const rentedCount    = allProps.filter(p => p.status === 'rented').length;
-  const grossYieldPct  = totalValueUSD > 0 && totalRentUSD > 0 ? (totalRentUSD * 12 / totalValueUSD * 100).toFixed(1) : null;
   const cf = cashFlowUSD >= 0;
   const annualCashFlowUSD = cashFlowUSD * 12;
   const acf = annualCashFlowUSD >= 0;
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const curMonthHeb = fmtMonthHeb(nowMonth);
+
+  // Find rented properties missing rent for current month
+  const missingRent = [];
+  for (const c of countries) {
+    for (const p of (c.properties || [])) {
+      if (p.status !== 'rented') continue;
+      const hasPaid = (p.rentHistory || []).some(r => r.month === nowMonth && !r.autoFilled);
+      if (!hasPaid) missingRent.push({ prop: p.name || p.city || '—', country: c.name });
+    }
+  }
+
   return `
     <div class="portfolio-card">
       <div class="portfolio-total-label">שווי תיק נכסים (${dc})</div>
       <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
       <div class="portfolio-stats">
-        <div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד חודשי</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
+        <div class="portfolio-stat"><div class="portfolio-stat-label">שכ"ד חודשי (${curMonthHeb})</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
         <div class="portfolio-stat"><div class="portfolio-stat-label">משכנתאות</div><div class="portfolio-stat-num" style="color:rgba(245,158,11,0.95)">${totalMortgUSD ? fmtCurrency(totalMortgUSD, dc) : '—'}</div></div>
         <div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו/חודש</div><div class="portfolio-stat-num" style="color:${cf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${cf?'+':'−'}${fmtCurrency(Math.abs(cashFlowUSD), dc)}</div></div>
         <div class="portfolio-stat"><div class="portfolio-stat-label">תזרים נטו/שנה</div><div class="portfolio-stat-num" style="color:${acf?'rgba(16,185,129,0.95)':'rgba(239,68,68,0.95)'}">${acf?'+':'−'}${fmtCurrency(Math.abs(annualCashFlowUSD), dc)}</div></div>
       </div>
+      ${missingRent.length ? `
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(245,158,11,0.2)">
+        <div style="font-size:0.72rem;color:rgba(245,158,11,0.9);font-weight:700;margin-bottom:6px">⚠ שכ"ד ${curMonthHeb} טרם הוזן:</div>
+        ${missingRent.map(m => `<div style="font-size:0.75rem;color:rgba(245,158,11,0.75);padding:2px 0">✦ ${esc(m.prop)} <span style="opacity:0.6">(${esc(m.country)})</span></div>`).join('')}
+      </div>` : ''}
     </div>`;
 }
 
