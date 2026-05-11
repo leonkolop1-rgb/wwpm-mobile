@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v32';
+const CACHE = 'wwpm-v33';
 const ASSETS = [
   '/wwpm-mobile/',
   '/wwpm-mobile/index.html',
