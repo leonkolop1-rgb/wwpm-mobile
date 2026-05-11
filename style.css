@@ -447,7 +447,7 @@ html, body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 17px 46px 15px 17px;
+  padding: 17px 18px 15px 44px;
   cursor: pointer;
   position: relative;
   -webkit-tap-highlight-color: transparent;
@@ -882,6 +882,50 @@ html, body {
   flex-shrink: 0;
   margin-top: 5px;
 }
+
+/* ===== SORT BAR ===== */
+.sort-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+.sort-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 6px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: all var(--transition);
+  min-height: 32px;
+}
+.sort-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.sort-chip:active { opacity: 0.7; transform: scale(0.95); }
+
+/* ===== COVER PHOTO ===== */
+.prop-cover {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: block;
+}
+.prop-cover-placeholder {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 18px;
+  cursor: pointer;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--transition), color var(--transition);
+}
+.prop-cover-placeholder:active { border-color: var(--accent); color: var(--accent); }
 
 /* ===== SEARCH BAR ===== */
 .search-wrap {

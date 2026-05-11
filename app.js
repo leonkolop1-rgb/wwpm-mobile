@@ -91,6 +91,9 @@ const state = {
   expenseCategory: null,
   viewOnly: false,
   viewOwner: null,
+  sortProps: 'default',
+  searchQuery: '',
+  adminUsers: null,
 };
 
 // restore session
@@ -232,6 +235,8 @@ function render() {
     app.innerHTML = renderRentHistory();
   } else if (state.view === 'analytics') {
     app.innerHTML = renderAnalytics();
+  } else if (state.view === 'admin') {
+    app.innerHTML = state.adminUsers === null ? renderAdminLoading() : renderAdmin();
   }
 }
 
@@ -285,6 +290,7 @@ function renderHome() {
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
           <button class="icon-btn" onclick="shareApp()" title="שתף">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
+          ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="ניהול">👑</button>` : ''}
           <button class="icon-btn" onclick="cycleLang()" title="שפה">🌐</button>
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
         </div>
@@ -337,10 +343,20 @@ function renderHome() {
 function renderCountry() {
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
   if (!country) { goBack(); return ''; }
-  const props = country.properties || [];
+  const rawProps = country.properties || [];
   const flag = FLAGS[country.name] || '🌍';
   const currency = country.currency || 'USD';
   const curSym = CURRENCIES[currency] || currency;
+  const sort = state.sortProps || 'default';
+  const sortedProps = [...rawProps].sort((a, b) => {
+    if (sort === 'value-desc') return (b.currentValue||0) - (a.currentValue||0);
+    if (sort === 'value-asc')  return (a.currentValue||0) - (b.currentValue||0);
+    if (sort === 'rent-desc')  return (b.monthlyRent||0) - (a.monthlyRent||0);
+    if (sort === 'status')     return (a.status||'').localeCompare(b.status||'');
+    return 0;
+  });
+  const sq = state.searchQuery.toLowerCase().trim();
+  const props = sq ? sortedProps.filter(p => ((p.name||'')+' '+(p.city||'')+' '+(p.status||'')).toLowerCase().includes(sq)) : sortedProps;
   return `
     <div class="page">
       <header class="top-bar">
@@ -349,7 +365,15 @@ function renderCountry() {
         <button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
       </header>
       <div class="content">
-        ${props.length > 1 ? `<div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש נכס..." oninput="doSearch(this.value)" /></div>` : ''}
+        ${rawProps.length > 1 ? `
+          <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש נכס..." value="${esc(state.searchQuery)}" oninput="doSearch(this.value)" /></div>
+          <div class="sort-bar">
+            <button class="sort-chip ${sort==='default'?'active':''}" onclick="setSortProps('default')">ברירת מחדל</button>
+            <button class="sort-chip ${sort==='value-desc'?'active':''}" onclick="setSortProps('value-desc')">שווי ↓</button>
+            <button class="sort-chip ${sort==='value-asc'?'active':''}" onclick="setSortProps('value-asc')">שווי ↑</button>
+            <button class="sort-chip ${sort==='rent-desc'?'active':''}" onclick="setSortProps('rent-desc')">שכ"ד ↓</button>
+            <button class="sort-chip ${sort==='status'?'active':''}" onclick="setSortProps('status')">סטטוס</button>
+          </div>` : ''}
         ${props.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">${t('no_properties')}</div></div>`
           : props.map(p => renderPropertyCard(p, currency)).join('')
@@ -432,6 +456,7 @@ function renderPropertyCard(p, countryCurrency = 'USD') {
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
   return `
     <div class="prop-card" data-status="${p.status || ''}" data-searchname="${esc(((p.name||'')+' '+(p.city||'')+' '+(p.address||'')+' '+(p.status||'')).toLowerCase())}" onclick="goToProperty('${esc(p.id)}')">
+      ${p.coverPhoto?.url ? `<div style="margin:-17px -18px 13px -44px;height:110px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0"><img src="${esc(p.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></div>` : ''}
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
@@ -519,6 +544,11 @@ function renderProperty() {
       </header>
 
       <div class="content">
+
+        <!-- Cover photo -->
+        ${p.coverPhoto?.url
+          ? `<div style="position:relative"><img src="${esc(p.coverPhoto.url)}" class="prop-cover" loading="lazy" />${!state.viewOnly ? `<button onclick="uploadCoverPhoto()" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.6);border:none;border-radius:10px;color:white;font-size:0.75rem;font-weight:600;padding:7px 12px;cursor:pointer;backdrop-filter:blur(8px)">📷 החלף</button>` : ''}</div>`
+          : (!state.viewOnly ? `<button onclick="uploadCoverPhoto()" class="prop-cover-placeholder">📷 הוסף תמונת נכס</button>` : '')}
 
         <!-- Badges -->
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1197,10 +1227,138 @@ function toast(msg) {
 
 // ===== SEARCH =====
 function doSearch(q) {
+  state.searchQuery = q;
   const lq = q.toLowerCase().trim();
   document.querySelectorAll('[data-searchname]').forEach(el => {
     el.style.display = (!lq || el.dataset.searchname.toLowerCase().includes(lq)) ? '' : 'none';
   });
+}
+
+// ===== SORT =====
+function setSortProps(val) {
+  state.sortProps = val;
+  render();
+}
+
+// ===== ADMIN =====
+function renderAdminLoading() {
+  return `<div class="page">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
+      <div class="top-bar-title">👑 ניהול</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="content" style="align-items:center;padding-top:60px">
+      <div class="spinner"></div>
+    </div>
+  </div>`;
+}
+
+function renderAdmin() {
+  const users = state.adminUsers || [];
+  const totalProps = users.reduce((s, u) => s + (u.data?.countries||[]).reduce((cs,c) => cs+(c.properties||[]).length, 0), 0);
+  const totalCountries = users.reduce((s, u) => s + (u.data?.countries||[]).length, 0);
+  return `<div class="page">
+    <header class="top-bar">
+      <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
+      <div class="top-bar-title">👑 לוח בקרה</div>
+      <div style="width:44px"></div>
+    </header>
+    <div class="content">
+      <div class="detail-card">
+        <div class="detail-card-title">📊 סיכום מערכת</div>
+        <div class="detail-row"><span class="detail-label">משתמשים רשומים</span><span class="detail-value">${users.length}</span></div>
+        <div class="detail-row"><span class="detail-label">נכסים סה"כ</span><span class="detail-value">${totalProps}</span></div>
+        <div class="detail-row"><span class="detail-label">מדינות סה"כ</span><span class="detail-value">${totalCountries}</span></div>
+      </div>
+      <div class="section-label">משתמשים</div>
+      ${users.map(u => {
+        const countries = u.data?.countries || [];
+        const propCount = countries.reduce((s,c)=>s+(c.properties||[]).length, 0);
+        const valueUSD = countries.flatMap(c=>c.properties||[]).reduce((s,p)=>s+(p.currentValue||0),0);
+        return `<div class="detail-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div>
+              <div style="font-weight:800;font-size:1rem">${esc(u.username)} ${u.is_admin?'👑':''}</div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">${propCount} נכסים · ${countries.length} מדינות</div>
+            </div>
+            <div style="font-weight:800;color:var(--accent);direction:ltr;font-feature-settings:'tnum';font-size:0.95rem">${fmtCurrency(valueUSD,'USD')}</div>
+          </div>
+          <button onclick="viewAs('${esc(u.username)}')" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text2);font-size:0.85rem;font-weight:600;padding:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--transition)" onactive="this.style.background='var(--surface3)'">👁 צפה כ-${esc(u.username)}</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function goToAdmin() {
+  state.view = 'admin';
+  state.adminUsers = null;
+  render();
+  Promise.all([
+    sb.select('users', 'select=username,is_admin&order=username.asc'),
+    sb.select('user_data', 'select=username,data'),
+  ]).then(([users, allData]) => {
+    const dataMap = {};
+    for (const d of (allData || [])) dataMap[d.username] = d.data;
+    state.adminUsers = (users || []).map(u => ({ ...u, data: dataMap[u.username] || { countries: [] } }));
+    render();
+  }).catch(() => { state.adminUsers = []; render(); });
+}
+
+async function viewAs(username) {
+  try {
+    const row = await sb.select('user_data', `username=eq.${encodeURIComponent(username)}&select=data`, true);
+    state.data = row?.data || { countries: [] };
+    state.viewOnly = true;
+    state.viewOwner = username;
+    state.view = 'home';
+    render();
+    toast(`👁 צופה כ-${username}`);
+  } catch { toast('שגיאה'); }
+}
+
+// ===== COVER PHOTO =====
+async function uploadCoverPhoto() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async () => {
+    if (!input.files[0]) return;
+    const file = input.files[0];
+    const country = (state.data?.countries||[]).find(c=>c.id===state.currentCountryId);
+    const p = (country?.properties||[]).find(p=>p.id===state.currentPropertyId);
+    if (!p) return;
+    toast('מעלה תמונה...');
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${state.currentUser}/${p.id}/cover/main.${ext}`;
+      await sb.upload(path, file);
+      p.coverPhoto = { url: sb.publicUrl(path) };
+      await saveData();
+      haptic();
+      toast('✓ תמונה עודכנה');
+      render();
+    } catch { toast('שגיאה בהעלאה'); }
+  };
+  input.click();
+}
+
+// ===== OFFLINE INDICATOR =====
+function updateOnlineStatus() {
+  const id = '_offline-banner';
+  let el = document.getElementById(id);
+  if (!navigator.onLine) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      Object.assign(el.style, { position:'fixed', top:'0', left:'0', right:'0', background:'var(--danger)', color:'white', fontSize:'0.78rem', fontWeight:'700', padding:'7px', textAlign:'center', zIndex:'9998', letterSpacing:'0.02em' });
+      el.textContent = '⚡ אין חיבור לאינטרנט — נתונים מהמטמון';
+      document.body.appendChild(el);
+    }
+  } else {
+    el?.remove();
+  }
 }
 
 // ===== ACTIONS =====
@@ -1628,7 +1786,7 @@ function goToCountry(id) {
 }
 
 function goBack() {
-  if (state.view === 'analytics') state.view = 'home';
+  if (state.view === 'analytics' || state.view === 'admin') state.view = 'home';
   else if (state.view === 'expenses' || state.view === 'rent-history') state.view = 'property';
   else if (state.view === 'property') state.view = 'country';
   else if (state.view === 'country') state.view = 'home';
@@ -1680,5 +1838,8 @@ document.addEventListener('touchend', e => {
 // ===== INIT =====
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
   render();
 });
