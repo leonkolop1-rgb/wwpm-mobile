@@ -232,6 +232,7 @@ const COUNTRY_PRESETS = [
   { name: 'סרביה',   flag: 'flags/serbia.png',     currency: 'EUR' },
   { name: 'ארה"ב',   flag: 'flags/us.png',          currency: 'USD' },
   { name: 'רוסיה',   flag: 'flags/russia.png',     currency: 'USD' },
+  { name: 'אחר',     flag: '',                      currency: 'USD' },
 ];
 
 // Flag image paths (flags/ folder) — falls back to null for unlisted countries
@@ -423,16 +424,37 @@ function renderHome() {
       <div class="modal-card">
         <div class="modal-title">🌍 בחר מדינה</div>
         <input type="hidden" id="nc-name" value="">
-        <input type="hidden" id="nc-currency" value="">
         <div class="country-picker-grid">
           ${COUNTRY_PRESETS.map(p => `
-            <button class="country-picker-tile" id="cpt-${p.name}" onclick="selectCountryPreset('${esc(p.name)}','${p.flag}','${p.currency}')">
-              <img src="${p.flag}" class="cpt-flag" alt="${esc(p.name)}">
+            <button class="country-picker-tile" id="cpt-${p.name}" onclick="selectCountryPreset('${esc(p.name)}','${p.flag || ''}','${p.currency}')">
+              ${p.flag ? `<img src="${p.flag}" class="cpt-flag" alt="${esc(p.name)}">` : `<span style="font-size:1.6rem;line-height:1">🌍</span>`}
               <span class="cpt-name">${esc(p.name)}</span>
             </button>`).join('')}
         </div>
-        <div id="nc-selected-info" style="display:none;margin:10px 0;padding:10px 14px;background:rgba(99,102,241,0.1);border:1px solid var(--accent);border-radius:var(--radius-xs);font-size:0.88rem;color:var(--accent2);text-align:center"></div>
-        <div style="display:flex;gap:10px;margin-top:8px">
+        <div id="nc-custom-name-wrap" style="display:none;margin-top:10px">
+          <div class="form-group" style="margin:0">
+            <label>שם המדינה</label>
+            <input type="text" id="nc-custom-name" placeholder="הזן שם מדינה..." style="text-align:right">
+          </div>
+        </div>
+        <div id="nc-currency-wrap" style="display:none;margin-top:10px">
+          <div class="form-group" style="margin:0">
+            <label>מטבע</label>
+            <select id="nc-currency">
+              <option value="ILS">₪ שקל (ILS)</option>
+              <option value="USD">$ דולר (USD)</option>
+              <option value="EUR">€ יורו (EUR)</option>
+              <option value="GBP">£ פאונד (GBP)</option>
+              <option value="GEL">₾ לארי (GEL)</option>
+              <option value="AED">د.إ דירהם (AED)</option>
+              <option value="TRY">₺ לירה טורקית (TRY)</option>
+              <option value="THB">฿ באט (THB)</option>
+              <option value="CAD">C$ דולר קנדי (CAD)</option>
+              <option value="AUD">A$ דולר אוסטרלי (AUD)</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px">
           <button class="btn-secondary" onclick="closeModal('add-country-modal')">ביטול</button>
           <button class="btn-primary" style="flex:2" onclick="submitAddCountry()">הוסף מדינה</button>
         </div>
@@ -2276,18 +2298,27 @@ const COUNTRY_CURRENCY_MAP = {
 
 function selectCountryPreset(name, flag, currency) {
   document.getElementById('nc-name').value = name;
-  document.getElementById('nc-currency').value = currency;
   document.querySelectorAll('.country-picker-tile').forEach(t => t.classList.remove('selected'));
   const tile = document.getElementById('cpt-' + name);
   if (tile) tile.classList.add('selected');
-  const info = document.getElementById('nc-selected-info');
-  if (info) { info.style.display = 'block'; info.innerHTML = `<img src="${flag}" style="width:24px;height:16px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-inline-end:6px"> <strong>${esc(name)}</strong> · ${currency}`; }
+  const isOther = name === 'אחר';
+  const customWrap = document.getElementById('nc-custom-name-wrap');
+  const curWrap = document.getElementById('nc-currency-wrap');
+  if (customWrap) customWrap.style.display = isOther ? 'block' : 'none';
+  if (curWrap) curWrap.style.display = 'block';
+  const curSel = document.getElementById('nc-currency');
+  if (curSel) curSel.value = currency;
 }
 
 async function submitAddCountry() {
-  const name = document.getElementById('nc-name').value.trim();
+  let name = document.getElementById('nc-name').value.trim();
   if (!name) { toast('נא לבחור מדינה'); return; }
-  const currency = document.getElementById('nc-currency').value || 'USD';
+  if (name === 'אחר') {
+    const custom = (document.getElementById('nc-custom-name')?.value || '').trim();
+    if (!custom) { toast('נא להזין שם מדינה'); return; }
+    name = custom;
+  }
+  const currency = document.getElementById('nc-currency')?.value || 'USD';
   if (!state.data) state.data = { countries: [] };
   if (!state.data.countries) state.data.countries = [];
   state.data.countries.push({ id: uid(), name, currency, file: name.toLowerCase().replace(/\s+/g,'_'), properties: [] });
