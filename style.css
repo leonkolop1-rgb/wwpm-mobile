@@ -1280,6 +1280,18 @@ body::after {
   font-weight: 600;
 }
 
+.rate-info-bar {
+  background: rgba(99,102,241,0.06);
+  border: 1px solid rgba(99,102,241,0.14);
+  border-radius: var(--radius-xs);
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  color: var(--text2);
+  text-align: center;
+  font-family: var(--font-num);
+  letter-spacing: 0.01em;
+}
+
 /* ===== QUICK RENT BUTTON ===== */
 .quick-rent-btn {
   background: rgba(16,185,129,0.1);

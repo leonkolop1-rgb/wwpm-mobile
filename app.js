@@ -1,7 +1,7 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 52;
+const APP_VERSION = 53;
 
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
@@ -66,15 +66,35 @@ const sb = {
 };
 
 // ===== EXCHANGE RATES =====
-const FALLBACK_RATES = { USD: 1, EUR: 0.92, ILS: 3.75, GEL: 2.70, GBP: 0.79, AED: 3.67 };
+const FALLBACK_RATES = { USD: 1, EUR: 0.93, ILS: 3.65, GEL: 2.73, GBP: 0.79, AED: 3.67, TRY: 38.5, CAD: 1.38, AUD: 1.58, THB: 34.5 };
 let rates = { ...FALLBACK_RATES };
+const RATES_CACHE_KEY = 'wwpm-rates-cache';
+const RATES_TTL = 7 * 24 * 60 * 60 * 1000;
 
 async function fetchRates() {
   try {
-    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,EUR,GBP,GEL,AED');
+    const cached = JSON.parse(localStorage.getItem(RATES_CACHE_KEY) || 'null');
+    if (cached?.rates && (Date.now() - cached.fetchedAt) < RATES_TTL) {
+      rates = cached.rates;
+      return;
+    }
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
     const j = await r.json();
-    if (j?.rates) rates = { USD: 1, ...j.rates };
+    if (j?.rates) {
+      rates = { USD: 1, ...j.rates };
+      localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, fetchedAt: Date.now() }));
+    }
   } catch { /* use fallback */ }
+}
+
+function getRateInfo(cur) {
+  if (!cur || cur === 'USD') return '';
+  const r = rates[cur];
+  if (!r) return '';
+  const sym = CURRENCIES[cur] || cur;
+  const fetchedAt = JSON.parse(localStorage.getItem(RATES_CACHE_KEY) || 'null')?.fetchedAt;
+  const dateStr = fetchedAt ? new Date(fetchedAt).toLocaleDateString('he-IL') : '';
+  return `1 $ = ${r.toFixed(2)} ${sym}${dateStr ? ` · עודכן ${dateStr}` : ''}`;
 }
 
 // ===== HASH =====
@@ -411,6 +431,7 @@ function renderHome() {
       </header>
       <div class="content">
         ${state.viewOnly ? `<div class="view-only-banner">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
+        ${state.displayCurrency !== 'USD' ? `<div class="rate-info-bar">${getRateInfo(state.displayCurrency)}</div>` : ''}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
           : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">מדינות</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש מדינה..." oninput="doSearch(this.value)" /></div>${countries.map(renderCountryCard).join('')}`
