@@ -1,7 +1,16 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 55;
+const APP_VERSION = 56;
+
+const CHANGELOG = {
+  56: 'דרופ דאון מטבע בכל דף + שער המרה חי מ-API בזמן אמת',
+  55: 'שיפור עדכון אוטומטי + תיקון שערי חליפין',
+  54: 'הוספת חודש נוכחי לשכ"ד + התראה על דירות ללא שכ"ד החודש',
+  53: 'מטבע מוצג בכל דף + פס שער חליפין',
+  52: 'שיפור גרפי ניתוח + תיקון דרופ דאון מדינות',
+  51: 'עמוד ראשי נקי — שווי תיק + 4 נתוני מפתח בלבד',
+};
 
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
@@ -2108,6 +2117,26 @@ async function deletePropertyDoc(fileId) {
 }
 
 // ===== UPDATE BANNER =====
+function showChangelogPopup() {
+  const note = CHANGELOG[APP_VERSION] || '';
+  if (!note) return;
+  const existing = document.getElementById('_changelog-popup');
+  if (existing) { existing.remove(); return; }
+  const pop = document.createElement('div');
+  pop.id = '_changelog-popup';
+  Object.assign(pop.style, {
+    position: 'fixed', bottom: '70px', left: '16px', right: '16px',
+    background: '#1e1b4b', border: '1px solid rgba(129,140,248,0.4)',
+    borderRadius: '12px', padding: '12px 16px',
+    color: 'rgba(199,210,254,0.95)', fontSize: '0.82rem', lineHeight: '1.5',
+    zIndex: '10000', boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+    direction: 'rtl',
+  });
+  pop.innerHTML = `<strong style="color:#a5b4fc">גרסה ${APP_VERSION} — מה חדש:</strong><br>${esc(note)}`;
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 5000);
+}
+
 function showUpdateBanner() {
   const id = '_update-banner';
   if (document.getElementById(id)) return;
@@ -2120,9 +2149,14 @@ function showUpdateBanner() {
     padding: '14px 18px',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     zIndex: '9999', boxShadow: '0 -4px 28px rgba(99,102,241,0.45)',
-    gap: '12px',
+    gap: '10px',
   });
-  el.innerHTML = `<span>🚀 גרסה חדשה זמינה!</span><button style="background:white;color:#6366f1;border:none;border-radius:9px;padding:7px 16px;font-size:0.8rem;font-weight:800;cursor:pointer" onclick="applyUpdate()">עדכן עכשיו</button>`;
+  el.innerHTML = `
+    <span>🚀 גרסה ${APP_VERSION} זמינה</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="showChangelogPopup()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);border-radius:50%;width:28px;height:28px;font-size:0.8rem;font-weight:800;cursor:pointer;line-height:1">i</button>
+      <button onclick="applyUpdate()" style="background:white;color:#6366f1;border:none;border-radius:9px;padding:7px 16px;font-size:0.8rem;font-weight:800;cursor:pointer">עדכן עכשיו</button>
+    </div>`;
   document.body.appendChild(el);
   haptic(12);
 }
