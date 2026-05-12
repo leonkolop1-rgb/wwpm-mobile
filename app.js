@@ -1,7 +1,7 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 53;
+const APP_VERSION = 54;
 
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
@@ -66,7 +66,7 @@ const sb = {
 };
 
 // ===== EXCHANGE RATES =====
-const FALLBACK_RATES = { USD: 1, EUR: 0.93, ILS: 3.65, GEL: 2.73, GBP: 0.79, AED: 3.67, TRY: 38.5, CAD: 1.38, AUD: 1.58, THB: 34.5 };
+const FALLBACK_RATES = { USD: 1, EUR: 0.93, ILS: 2.91, GEL: 2.73, GBP: 0.79, AED: 3.67, TRY: 38.5, CAD: 1.38, AUD: 1.58, THB: 34.5 };
 let rates = { ...FALLBACK_RATES };
 const RATES_CACHE_KEY = 'wwpm-rates-cache';
 const RATES_TTL = 7 * 24 * 60 * 60 * 1000;
@@ -74,7 +74,7 @@ const RATES_TTL = 7 * 24 * 60 * 60 * 1000;
 async function fetchRates() {
   try {
     const cached = JSON.parse(localStorage.getItem(RATES_CACHE_KEY) || 'null');
-    if (cached?.rates && (Date.now() - cached.fetchedAt) < RATES_TTL) {
+    if (cached?.rates && cached.appVersion === APP_VERSION && (Date.now() - cached.fetchedAt) < RATES_TTL) {
       rates = cached.rates;
       return;
     }
@@ -82,7 +82,7 @@ async function fetchRates() {
     const j = await r.json();
     if (j?.rates) {
       rates = { USD: 1, ...j.rates };
-      localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, fetchedAt: Date.now() }));
+      localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ rates, fetchedAt: Date.now(), appVersion: APP_VERSION }));
     }
   } catch { /* use fallback */ }
 }
