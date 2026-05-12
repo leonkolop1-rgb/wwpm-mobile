@@ -1,7 +1,7 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 54;
+const APP_VERSION = 55;
 
 // ===== CONFIG =====
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
@@ -95,6 +95,23 @@ function getRateInfo(cur) {
   const fetchedAt = JSON.parse(localStorage.getItem(RATES_CACHE_KEY) || 'null')?.fetchedAt;
   const dateStr = fetchedAt ? new Date(fetchedAt).toLocaleDateString('he-IL') : '';
   return `1 $ = ${r.toFixed(2)} ${sym}${dateStr ? ` · עודכן ${dateStr}` : ''}`;
+}
+
+function renderCurrencySelector() {
+  const dc = state.displayCurrency || 'USD';
+  return `<select class="top-select" onchange="setDisplayCurrency(this.value)" title="מטבע תצוגה">
+    <option value="USD" ${dc==='USD'?'selected':''}>$ USD</option>
+    <option value="ILS" ${dc==='ILS'?'selected':''}>₪ ILS</option>
+    <option value="EUR" ${dc==='EUR'?'selected':''}>€ EUR</option>
+    <option value="GBP" ${dc==='GBP'?'selected':''}>£ GBP</option>
+    <option value="GEL" ${dc==='GEL'?'selected':''}>₾ GEL</option>
+    <option value="AED" ${dc==='AED'?'selected':''}>د.إ AED</option>
+  </select>`;
+}
+
+function renderRateBar() {
+  const info = getRateInfo(state.displayCurrency);
+  return info ? `<div class="rate-info-bar">${info}</div>` : '';
 }
 
 // ===== HASH =====
@@ -418,20 +435,13 @@ function renderHome() {
           <button class="icon-btn" onclick="goToAnalytics()" title="אנליטיקה">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="ניהול">👑</button>` : ''}
           ${renderLangDropdown('topbar-lang', true)}
-          <select class="top-select" onchange="setDisplayCurrency(this.value)" title="מטבע תצוגה">
-            <option value="USD" ${state.displayCurrency==='USD'?'selected':''}>$ USD</option>
-            <option value="ILS" ${state.displayCurrency==='ILS'?'selected':''}>₪ ILS</option>
-            <option value="EUR" ${state.displayCurrency==='EUR'?'selected':''}>€ EUR</option>
-            <option value="GBP" ${state.displayCurrency==='GBP'?'selected':''}>£ GBP</option>
-            <option value="GEL" ${state.displayCurrency==='GEL'?'selected':''}>₾ GEL</option>
-            <option value="AED" ${state.displayCurrency==='AED'?'selected':''}>د.إ AED</option>
-          </select>
+          ${renderCurrencySelector()}
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
         </div>
       </header>
       <div class="content">
         ${state.viewOnly ? `<div class="view-only-banner">👁 מצב צפייה — נתונים של ${esc(state.viewOwner)}</div>` : ''}
-        ${state.displayCurrency !== 'USD' ? `<div class="rate-info-bar">${getRateInfo(state.displayCurrency)}</div>` : ''}
+        ${renderRateBar()}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
           : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">מדינות</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש מדינה..." oninput="doSearch(this.value)" /></div>${countries.map(renderCountryCard).join('')}`
@@ -492,7 +502,7 @@ function renderCountry() {
   const rawProps = country.properties || [];
   const flagImg = FLAGIMGS[country.name];
   const flagTitle = flagImg ? `<img src="${flagImg}" class="topbar-flag" alt="">` : (FLAGS[country.name] || '🌍');
-  const currency = country.currency || 'USD';
+  const currency = state.displayCurrency || 'USD';
   const curSym = CURRENCIES[currency] || currency;
   const sort = state.sortProps || 'default';
   const sortedProps = [...rawProps].sort((a, b) => {
@@ -509,9 +519,13 @@ function renderCountry() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">${flagTitle} ${esc(country.name)}</div>
-        <button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
+        <div class="top-bar-actions">
+          ${renderCurrencySelector()}
+          ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>` : ''}
+        </div>
       </header>
       <div class="content">
+        ${renderRateBar()}
         ${renderCountrySummary(country)}
         ${rawProps.length > 1 ? `
           <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="חיפוש נכס..." value="${esc(state.searchQuery)}" oninput="doSearch(this.value)" /></div>
@@ -805,7 +819,7 @@ function renderProperty() {
   if (!p) { goBack(); return ''; }
 
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
-  const currency = country?.currency || p.currency || 'USD';
+  const currency = state.displayCurrency || 'USD';
 
   // Expenses
   const maintenance  = p.maintenance || [];
@@ -845,6 +859,7 @@ function renderProperty() {
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
         <div class="top-bar-actions">
+          ${renderCurrencySelector()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="תמונת נכס">📷</button>` : ''}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
           <button class="icon-btn" onclick="window.print()" title="הדפס">🖨️</button>
@@ -852,6 +867,7 @@ function renderProperty() {
       </header>
 
       <div class="content">
+        ${renderRateBar()}
 
         <!-- Cover photo -->
         ${p.coverPhoto?.url
@@ -1233,7 +1249,7 @@ function renderRentHistory() {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) { goBack(); return ''; }
 
-  const currency = country?.currency || p.currency || 'USD';
+  const currency = state.displayCurrency || 'USD';
   const nowMonth = new Date().toISOString().slice(0, 7);
   const items = [...(p.rentHistory || [])]
     .filter(r => !r.autoFilled)
@@ -1245,9 +1261,13 @@ function renderRentHistory() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ חזור</button>
         <div class="top-bar-title">💵 היסטוריית שכירות</div>
-        <button class="icon-btn" onclick="showModal('rent-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
+        <div class="top-bar-actions">
+          ${renderCurrencySelector()}
+          <button class="icon-btn" onclick="showModal('rent-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
+        </div>
       </header>
       <div class="content">
+        ${renderRateBar()}
         <div class="values-grid">
           <div class="value-tile">
             <div class="value-tile-label">סך הכל התקבל</div>
@@ -1325,9 +1345,10 @@ function renderAnalytics() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ חזור</button>
         <div class="top-bar-title">📊 אנליטיקה</div>
-        <div style="width:60px"></div>
+        ${renderCurrencySelector()}
       </header>
       <div class="content">
+        ${renderRateBar()}
 
         <!-- Summary -->
         <div class="section-label">סיכום כולל — ${allProps.length} נכסים ב-${countries.length} מדינות</div>
