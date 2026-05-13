@@ -1153,13 +1153,14 @@ function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
   const canEdit = !state.viewOnly && countryId;
   return `
     <div class="prop-card" data-status="${p.status || ''}" data-searchname="${esc(((p.name||'')+' '+(p.city||'')+' '+(p.address||'')+' '+(p.status||'')).toLowerCase())}" onclick="goToProperty('${esc(p.id)}')">
-      ${p.coverPhoto?.url ? `<div style="margin:-17px -18px 13px -44px;height:110px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0"><img src="${esc(p.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></div>` : ''}
+      ${p.coverPhoto?.url ? `<div style="margin:-17px -17px 13px -17px;height:110px;overflow:hidden;border-radius:var(--radius) var(--radius) 0 0"><img src="${esc(p.coverPhoto.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></div>` : ''}
       <div class="prop-card-header">
         <div class="prop-name">${esc(p.name || p.city || '—')}</div>
         ${statusLabel ? `<span class="prop-badge" style="color:${statusColor};border-color:${statusColor}">${statusLabel}</span>` : ''}
-        <div style="display:flex;gap:4px;margin-inline-start:auto">
+        <div style="display:flex;gap:4px;align-items:center;margin-inline-start:auto">
           ${canEdit ? `<button class="quick-rent-btn" style="font-size:0.85rem" onclick="openQuickUpdate('${esc(p.id)}','${esc(countryId)}',event)" title="${t('quick_update_title')}">✏️</button>` : ''}
           ${canQuickRent ? `<button class="quick-rent-btn" onclick="openQuickRent('${esc(p.id)}','${esc(countryId)}',event)">💵+</button>` : ''}
+          <span class="prop-chevron-inline">›</span>
         </div>
       </div>
       <div class="prop-meta">
@@ -1185,7 +1186,6 @@ function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
             <div class="prop-value-num" style="color:var(--muted)">${fmtCurrency(p.purchasePrice, cur)}</div>
           </div>` : ''}
       </div>
-      <div class="prop-chevron">›</div>
     </div>`;
 }
 
@@ -1938,9 +1938,19 @@ function renderMonthlyPnL(countries) {
     const bhE = Math.max(d.expense > 0 ? 2 : 0, (d.expense / maxV) * H);
     const isCur = month === curMonth;
     const label = month.slice(5);
-    return `
-      <rect x="${(x+1).toFixed(1)}" y="${(H-bhI).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhI.toFixed(1)}" rx="2" fill="#10b981" opacity="${isCur?1:0.65}"/>
-      <rect x="${(x+bw+2).toFixed(1)}" y="${(H-bhE).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhE.toFixed(1)}" rx="2" fill="#ef4444" opacity="${isCur?1:0.55}"/>
+    const giI = `gi${i}`, giE = `ge${i}`;
+    return `<defs>
+      <linearGradient id="${giI}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#34d399" stop-opacity="${isCur?0.95:0.7}"/>
+        <stop offset="100%" stop-color="#059669" stop-opacity="${isCur?0.6:0.3}"/>
+      </linearGradient>
+      <linearGradient id="${giE}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f87171" stop-opacity="${isCur?0.9:0.65}"/>
+        <stop offset="100%" stop-color="#dc2626" stop-opacity="${isCur?0.55:0.25}"/>
+      </linearGradient>
+    </defs>
+      <rect x="${(x+1).toFixed(1)}" y="${(H-bhI).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhI.toFixed(1)}" rx="3" fill="url(#${giI})"/>
+      <rect x="${(x+bw+2).toFixed(1)}" y="${(H-bhE).toFixed(1)}" width="${bw.toFixed(1)}" height="${bhE.toFixed(1)}" rx="3" fill="url(#${giE})"/>
       ${i%2===0||n<=6 ? `<text x="${(x+slotW/2).toFixed(1)}" y="${H+14}" text-anchor="middle" fill="var(--muted)" font-size="8" font-family="-apple-system,sans-serif">${label}</text>` : ''}`;
   }).join('');
   const totI = entries.reduce((s,[,d])=>s+d.income,0);
@@ -2006,10 +2016,20 @@ function renderValueVsPurchaseChart(countries) {
     const flagEl = FLAGIMGS[d.name]
       ? `<image href="${FLAGIMGS[d.name]}" x="-38" y="${y + 4}" width="30" height="20" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 0 0 0 round 4px)"/>`
       : `<text x="-8" y="${y + barH - 4}" text-anchor="middle" font-size="14">${FLAGS[d.name]||'🌍'}</text>`;
-    return `
+    const gInv = `gi${i}`, gVal = `gv${i}`;
+    return `<defs>
+      <linearGradient id="${gInv}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#818cf8" stop-opacity="0.25"/>
+      </linearGradient>
+      <linearGradient id="${gVal}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${gainColor}" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="${gainColor}" stop-opacity="0.55"/>
+      </linearGradient>
+    </defs>
       ${flagEl}
-      <rect x="0" y="${y}" width="${wInv}" height="${barH}" rx="4" fill="rgba(99,102,241,0.35)"/>
-      <rect x="0" y="${y + barH + 2}" width="${wVal}" height="${barH}" rx="4" fill="${gainColor}" opacity="0.85"/>
+      <rect x="0" y="${y}" width="${wInv}" height="${barH}" rx="4" fill="url(#${gInv})"/>
+      <rect x="0" y="${y + barH + 2}" width="${wVal}" height="${barH}" rx="4" fill="url(#${gVal})"/>
     `;
   }).join('');
   return `
@@ -2098,7 +2118,12 @@ function renderRentIncomeChart(countries) {
     const y = H - bh;
     const label = month.slice(5);
     const isMax = val === maxV;
-    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${isMax ? 'var(--success)' : '#10b981'}" opacity="${isMax ? 1 : 0.55}"/>
+    const fillId = `rg${i}`;
+    return `<defs><linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${isMax ? '#34d399' : '#10b981'}" stop-opacity="${isMax ? 1 : 0.75}"/>
+        <stop offset="100%" stop-color="${isMax ? '#10b981' : '#059669'}" stop-opacity="${isMax ? 0.7 : 0.35}"/>
+      </linearGradient></defs>
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="url(#${fillId})"/>
       ${i % 2 === 0 || n <= 6 ? `<text x="${(x+bw/2).toFixed(1)}" y="${H+16}" text-anchor="middle" fill="var(--muted)" font-size="8.5" font-family="-apple-system,sans-serif">${label}</text>` : ''}`;
   }).join('');
   return `
@@ -2234,27 +2259,40 @@ function renderCountrySummary(country) {
 
 function renderCountryCard(c) {
   const props = c.properties || [];
-  const currency = c.currency || props[0]?.currency || 'USD';
   const totalValue = props.reduce((s, p) => s + (p.currentValue || 0), 0);
   const totalRent  = props.reduce((s, p) => s + (p.monthlyRent  || 0), 0);
   const rented = props.filter(p => p.status === 'rented').length;
   const yld = totalValue > 0 && totalRent > 0 ? (totalRent * 12 / totalValue * 100).toFixed(1) : null;
+  const dc = state.displayCurrency || 'USD';
   const sub = [
     `${props.length} ${t('properties')}`,
     rented > 0 ? `${rented} ${t('rented_label')}` : null,
-    yld ? `${yld}%` : null,
   ].filter(Boolean).join(' · ');
   return `
     <div class="country-card" data-searchname="${esc(c.name.toLowerCase())}" onclick="goToCountry('${esc(c.id)}')">
-      ${getFlagHtml(c.name)}
-      <div class="country-info">
-        <div class="country-name">${esc(c.name)}</div>
-        <div class="country-sub">${sub}</div>
+      <div class="cc-main">
+        ${getFlagHtml(c.name)}
+        <div class="country-info">
+          <div class="country-name">${esc(c.name)}</div>
+          <div class="country-sub">${sub}</div>
+        </div>
+        <span class="cc-chevron">›</span>
       </div>
-      <div class="country-value">
-        <span class="country-value-num">${fmtCurrency(totalValue, currency)}</span>
-        <span class="chevron">›</span>
-      </div>
+      ${totalValue > 0 ? `
+      <div class="cc-stats">
+        <div class="cc-stat">
+          <div class="cc-stat-label">${t('current_value')}</div>
+          <div class="cc-stat-val">${fmtCurrency(totalValue, dc)}</div>
+        </div>
+        ${totalRent > 0 ? `<div class="cc-stat">
+          <div class="cc-stat-label">${t('rent_month_short')}</div>
+          <div class="cc-stat-val" style="color:var(--success)">${fmtCurrency(totalRent, dc)}</div>
+        </div>` : ''}
+        ${yld ? `<div class="cc-stat">
+          <div class="cc-stat-label">${t('yield_label')}</div>
+          <div class="cc-stat-val" style="color:var(--accent2)">${yld}%</div>
+        </div>` : ''}
+      </div>` : ''}
     </div>`;
 }
 

@@ -635,10 +635,10 @@ body::after {
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(99,102,241,0.16);
   border-radius: var(--radius);
-  padding: 14px 50px 14px 14px;
+  padding: 14px 14px 12px;
   display: flex;
-  align-items: center;
-  gap: 13px;
+  flex-direction: column;
+  gap: 10px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -658,18 +658,65 @@ body::after {
 .country-card::after {
   content: '';
   position: absolute;
-  top: 16%; right: 0; height: 68%; width: 3px;
+  top: 0; right: 0; height: 100%; width: 3px;
   background: var(--gradient-accent);
-  border-radius: 3px 0 0 3px;
-  opacity: 0.5;
-  transition: height 0.2s, top 0.2s, opacity 0.2s;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  opacity: 0.35;
+  transition: opacity 0.2s;
 }
 .country-card:active {
   transform: scale(0.974);
   border-color: rgba(99,102,241,0.35);
   box-shadow: 0 0 0 2px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.2);
 }
-.country-card:active::after { opacity: 1; height: 80%; top: 10%; }
+.country-card:active::after { opacity: 0.8; }
+
+/* Country card inner layout */
+.cc-main {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.cc-chevron {
+  font-size: 1.05rem;
+  color: var(--muted);
+  opacity: 0.35;
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+.cc-stats {
+  display: flex;
+  border-top: 1px solid rgba(99,102,241,0.09);
+  padding-top: 9px;
+  margin-top: 1px;
+}
+.cc-stat {
+  flex: 1;
+  text-align: center;
+  padding: 0 6px;
+  border-inline-end: 1px solid rgba(99,102,241,0.08);
+}
+.cc-stat:last-child { border-inline-end: none; }
+.cc-stat-label {
+  font-size: 0.58rem;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cc-stat-val {
+  font-family: var(--font-num);
+  font-size: 0.88rem;
+  font-weight: 800;
+  direction: ltr;
+  font-feature-settings: 'tnum';
+  letter-spacing: -0.02em;
+  color: var(--accent2);
+}
 
 .country-flag {
   font-size: 2.2rem;
@@ -709,26 +756,6 @@ body::after {
 .country-info { flex: 1; min-width: 0; }
 .country-name { font-size: 0.98rem; font-weight: 800; margin-bottom: 3px; letter-spacing: -0.02em; }
 .country-sub { font-size: 0.74rem; color: var(--muted); }
-.country-value {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-}
-.country-value-num {
-  font-family: var(--font-num);
-  font-size: 0.93rem;
-  font-weight: 800;
-  color: var(--accent2);
-  direction: ltr;
-  white-space: nowrap;
-  font-feature-settings: 'tnum';
-  letter-spacing: -0.025em;
-}
 .chevron { font-size: 1rem; color: var(--muted); opacity: 0.4; }
 
 /* ===== EMPTY STATE ===== */
@@ -825,7 +852,7 @@ body::after {
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   border: 1px solid rgba(99,102,241,0.14);
   border-radius: var(--radius);
-  padding: 15px 15px 13px 40px;
+  padding: 15px 17px 13px;
   cursor: pointer;
   position: relative;
   -webkit-tap-highlight-color: transparent;
@@ -878,7 +905,7 @@ body::after {
   font-feature-settings: 'tnum';
   letter-spacing: -0.03em;
 }
-.prop-chevron { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; color: var(--muted); opacity: 0.35; }
+.prop-chevron-inline { font-size: 1.1rem; color: var(--muted); opacity: 0.35; flex-shrink: 0; }
 
 /* ===== PROPERTY DETAIL ===== */
 .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
@@ -921,7 +948,16 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.03) inset;
+  position: relative;
+  overflow: hidden;
+}
+.detail-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.25), transparent);
+  pointer-events: none;
 }
 .detail-card-title { font-size: 0.64rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 1px; }
 .detail-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 0; }
