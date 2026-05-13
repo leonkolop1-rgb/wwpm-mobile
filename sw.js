@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v63';
+const CACHE = 'wwpm-v64';
 const ASSETS = [
   '/wwpm-mobile/',
   '/wwpm-mobile/index.html',
@@ -8,8 +8,16 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  // Skip waiting immediately so iOS home-screen PWA gets updates automatically
+  e.waitUntil(
+    caches.open(CACHE).then(c =>
+      Promise.allSettled(
+        ASSETS.map(url =>
+          fetch(new Request(url, { cache: 'reload' }))
+            .then(r => { if (r.ok) return c.put(url, r); })
+        )
+      )
+    )
+  );
   self.skipWaiting();
 });
 
@@ -23,10 +31,14 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('supabase.co')) return;
+  const isOwn = e.request.url.includes('leonkolop1-rgb.github.io');
+  const req = isOwn ? new Request(e.request.url, { cache: 'no-cache' }) : e.request;
   e.respondWith(
-    fetch(e.request).then(r => {
-      const clone = r.clone();
-      caches.open(CACHE).then(c => c.put(e.request, clone));
+    fetch(req).then(r => {
+      if (r.ok && isOwn) {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
       return r;
     }).catch(() => caches.match(e.request))
   );
