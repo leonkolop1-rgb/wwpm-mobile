@@ -25,7 +25,7 @@ const EMAILJS_PUBLIC_KEY      = '_0lVXepzH6_REXm47';
 const EMAILJS_SERVICE_ID      = 'service_wg7h8kh';
 const EMAILJS_TEMPLATE_ID     = 'template_wptusmp';
 const EMAILJS_FEEDBACK_TEMPLATE = 'template_feedback'; // create in EmailJS dashboard
-const FEEDBACK_ADMIN_EMAIL    = 'leonkolop1@gmail.com';
+const FEEDBACK_ADMIN_EMAIL    = 'worldwidepropertymanager@gmail.com';
 
 // ===== SUPABASE CLIENT =====
 const sb = {
