@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 64;
+const APP_VERSION = 65;
 
 const CHANGELOG = {
+  65: 'תיקון כפתור עדכון ידני — לוחצים ומתעדכן מיד',
   64: 'תיקון שורה עליונה — כפתורים נכנסים בשורה אחת',
   63: 'פידבק נשלח ישירות למייל — ללא פתיחת אפליקציית מייל',
   62: 'עדכון אוטומטי — עכשיו עובד בלי לפתוח ספארי',
@@ -3383,14 +3384,13 @@ function applyUpdate() {
 
 async function forceUpdateCheck() {
   toast(t('checking_update'));
+  if (!('serviceWorker' in navigator) || !_swReg) { location.reload(); return; }
   try {
-    if ('serviceWorker' in navigator && _swReg) {
-      await _swReg.update();
-      // If a new SW installed and activated it will trigger controllerchange → reload.
-      // If nothing changed, show "up to date" after 2.5s.
-      setTimeout(() => toast(`✓ ${t('up_to_date')}`), 2500);
+    await _swReg.update();
+    if (_swReg.waiting) {
+      _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      location.reload();
+      setTimeout(() => toast(`✓ ${t('up_to_date')}`), 2000);
     }
   } catch {
     location.reload();

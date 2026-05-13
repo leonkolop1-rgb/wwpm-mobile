@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v66';
+const CACHE = 'wwpm-v67';
 const ASSETS = [
   '/wwpm-mobile/',
   '/wwpm-mobile/index.html',
@@ -26,6 +26,10 @@ self.addEventListener('activate', e => {
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
   ));
   self.clients.claim();
+});
+
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
