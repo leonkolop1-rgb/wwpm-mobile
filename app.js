@@ -834,13 +834,12 @@ function showFeedbackModal() {
 }
 
 async function submitFeedback() {
-  const maxLen = 600;
   const text = (document.getElementById('feedback-text')?.value || '').trim();
   if (!text) { toast(t('feedback_empty')); return; }
   const btn = document.getElementById('feedback-send-btn');
   if (btn) { btn.disabled = true; btn.textContent = t('feedback_sending'); }
 
-  let saved = false;
+  // Try Supabase silently (bonus storage if table exists)
   try {
     await sb.insert('feedback', {
       username: state.currentUser || 'anonymous',
@@ -848,26 +847,16 @@ async function submitFeedback() {
       lang: state.lang,
       created_at: new Date().toISOString(),
     });
-    saved = true;
-  } catch { /* table may not exist yet */ }
+  } catch { /* table may not exist */ }
 
-  try {
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_FEEDBACK_TEMPLATE, {
-      from_username: state.currentUser || 'anonymous',
-      message: text,
-      to_email: FEEDBACK_ADMIN_EMAIL,
-    });
-    saved = true;
-  } catch { /* template may not exist yet */ }
+  // Open mailto — works on every device, no backend needed
+  const subject = encodeURIComponent(`WWPM Feedback from ${state.currentUser || 'user'}`);
+  const body = encodeURIComponent(text);
+  window.location.href = `mailto:${FEEDBACK_ADMIN_EMAIL}?subject=${subject}&body=${body}`;
 
-  if (saved) {
-    closeModal('feedback-modal');
-    toast(t('feedback_sent'));
-  } else {
-    if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
-    toast(t('feedback_err'));
-  }
+  closeModal('feedback-modal');
+  toast(t('feedback_sent'));
+  if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
 }
 
 function _ensureFeedbackModal() {
