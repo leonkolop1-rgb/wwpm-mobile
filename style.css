@@ -470,8 +470,13 @@ body::after {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.top-bar-actions { display: flex; align-items: center; }
+.top-bar-actions { display: flex; align-items: center; flex-shrink: 0; }
+.top-bar .icon-btn { width: 36px; height: 36px; font-size: 1.05rem; }
 
 .icon-btn {
   background: none;
