@@ -1,9 +1,11 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 58;
+const APP_VERSION = 60;
 
 const CHANGELOG = {
+  60: 'דף הרשמה — צור חשבון חדש ישירות מהאפליקציה',
+  59: 'עדכון אוטומטי — עובד גם ממסך הבית ב-iOS',
   58: 'כפתור עדכון ידני + שיפור מנגנון גילוי עדכונים',
   57: 'תרגום מלא לאנגלית ורוסית — כל כפתור, מודל, הודעה וגרף',
   56: 'דרופ דאון מטבע בכל דף + שער המרה חי מ-API בזמן אמת',
@@ -135,6 +137,7 @@ async function hashPassword(password) {
 const _shareParam = new URLSearchParams(location.search).get('share');
 const state = {
   view: 'login',
+  authTab: 'login',
   currentUser: null,
   isAdmin: false,
   data: null,
@@ -325,6 +328,13 @@ const STRINGS = {
     display_currency_title: 'מטבע תצוגה', share_msg_title: 'WWPM — נתוני הנכסים שלי', link_copied: 'הלינק הועתק',
     confirm_delete_country: 'למחוק את', confirm_delete_country_props: 'נכסים יימחקו לצמיתות',
     checking_update: 'בודק עדכונים...', up_to_date: 'האפליקציה מעודכנת',
+    // Registration
+    register: 'הרשמה', register_btn: 'הירשם', registering: 'נרשם...',
+    email: 'אימייל', email_ph: 'your@email.com',
+    err_invalid_email: 'כתובת אימייל לא תקינה',
+    err_password_short: 'סיסמה חייבת להיות לפחות 4 תווים',
+    err_username_taken: 'שם המשתמש כבר תפוס',
+    welcome_new: 'ברוך הבא,', creating_account: 'יוצר חשבון...',
   },
   eng: {
     app_title: 'World Wide Property Manager', login: 'Login',
@@ -488,6 +498,13 @@ const STRINGS = {
     display_currency_title: 'Display currency', share_msg_title: 'WWPM — My property data', link_copied: 'Link copied',
     confirm_delete_country: 'Delete', confirm_delete_country_props: 'properties will be permanently deleted',
     checking_update: 'Checking for updates...', up_to_date: 'App is up to date',
+    // Registration
+    register: 'Register', register_btn: 'Sign Up', registering: 'Creating account...',
+    email: 'Email', email_ph: 'your@email.com',
+    err_invalid_email: 'Invalid email address',
+    err_password_short: 'Password must be at least 4 characters',
+    err_username_taken: 'Username already taken',
+    welcome_new: 'Welcome,', creating_account: 'Creating account...',
   },
   rus: {
     app_title: 'Управление недвижимостью', login: 'Вход',
@@ -651,6 +668,13 @@ const STRINGS = {
     display_currency_title: 'Валюта', share_msg_title: 'WWPM — Мои данные недвижимости', link_copied: 'Ссылка скопирована',
     confirm_delete_country: 'Удалить', confirm_delete_country_props: 'объектов будет удалено',
     checking_update: 'Проверка обновлений...', up_to_date: 'Приложение обновлено',
+    // Registration
+    register: 'Регистрация', register_btn: 'Зарегистрироваться', registering: 'Регистрация...',
+    email: 'Email', email_ph: 'your@email.com',
+    err_invalid_email: 'Неверный email',
+    err_password_short: 'Пароль минимум 4 символа',
+    err_username_taken: 'Имя пользователя занято',
+    welcome_new: 'Добро пожаловать,', creating_account: 'Создание аккаунта...',
   },
 };
 
@@ -801,6 +825,7 @@ function render() {
 }
 
 function renderLogin() {
+  const isRegister = state.authTab === 'register';
   return `
     <div class="login-page">
       <div class="login-card">
@@ -810,6 +835,29 @@ function renderLogin() {
         <div class="lang-switcher">
           ${renderLangDropdown('login-lang', false)}
         </div>
+        <div class="auth-tabs">
+          <button class="auth-tab ${!isRegister ? 'active' : ''}" onclick="switchAuthTab('login')">${t('login')}</button>
+          <button class="auth-tab ${isRegister ? 'active' : ''}" onclick="switchAuthTab('register')">${t('register')}</button>
+        </div>
+        ${isRegister ? `
+        <form class="login-form" onsubmit="doRegister(event)">
+          <div class="form-group">
+            <label>${t('username')}</label>
+            <input type="text" id="reg-username" autocomplete="username" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="${t('username')}">
+          </div>
+          <div class="form-group">
+            <label>${t('email')}</label>
+            <input type="email" id="reg-email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="${t('email_ph')}">
+          </div>
+          <div class="form-group">
+            <label>${t('password')}</label>
+            <input type="password" id="reg-password" autocomplete="new-password" placeholder="${t('password')}">
+          </div>
+          ${state.error ? `<div class="login-error">${esc(state.error)}</div>` : ''}
+          <button type="submit" class="btn-primary" ${state.loading ? 'disabled' : ''}>
+            ${state.loading ? t('creating_account') : t('register_btn')}
+          </button>
+        </form>` : `
         <form class="login-form" onsubmit="doLogin(event)">
           <div class="form-group">
             <label>${t('username')}</label>
@@ -824,10 +872,16 @@ function renderLogin() {
             ${state.loading ? t('logging_in') : t('login_btn')}
           </button>
         </form>
-        <button class="btn-forgot-password" onclick="doForgotPassword()">${t('forgot_password')}</button>
+        <button class="btn-forgot-password" onclick="doForgotPassword()">${t('forgot_password')}</button>`}
       </div>
       <div class="login-version">v1.1.0</div>
     </div>`;
+}
+
+function switchAuthTab(tab) {
+  state.authTab = tab;
+  state.error = null;
+  render();
 }
 
 function renderSplash() {
@@ -2614,6 +2668,38 @@ function setDisplayCurrency(cur) {
   render();
 }
 
+async function doRegister(e) {
+  e.preventDefault();
+  const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username || !email || !password) { state.error = t('err_required'); render(); return; }
+  if (!email.includes('@') || !email.includes('.')) { state.error = t('err_invalid_email'); render(); return; }
+  if (password.length < 4) { state.error = t('err_password_short'); render(); return; }
+  state.loading = true; state.error = null; render();
+  try {
+    const existing = await sb.select('users', `username=eq.${encodeURIComponent(username)}&select=username`, true);
+    if (existing) { state.error = t('err_username_taken'); state.loading = false; render(); return; }
+    const hash = await hashPassword(password);
+    await sb.insert('users', { username, password_hash: hash, email, is_admin: false });
+    await sb.upsert('user_data', { username, data: { countries: [] } });
+    localStorage.setItem('wwpm-last-user', username);
+    const session = { username, isAdmin: false };
+    localStorage.setItem('wwpm-session', JSON.stringify(session));
+    state.currentUser = username;
+    state.isAdmin = false;
+    state.loading = false;
+    state.authTab = 'login';
+    toast(`🎉 ${t('welcome_new')} ${username}!`);
+    state.view = 'loading-data';
+    render();
+  } catch (err) {
+    state.error = err.message;
+    state.loading = false;
+    render();
+  }
+}
+
 async function doLogin(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value.trim();
@@ -3169,12 +3255,9 @@ async function forceUpdateCheck() {
   try {
     if ('serviceWorker' in navigator && _swReg) {
       await _swReg.update();
-      await new Promise(r => setTimeout(r, 2000));
-      if (_swReg.waiting) {
-        showUpdateBanner();
-      } else {
-        toast(`✓ ${t('up_to_date')}`);
-      }
+      // If a new SW installed and activated it will trigger controllerchange → reload.
+      // If nothing changed, show "up to date" after 2.5s.
+      setTimeout(() => toast(`✓ ${t('up_to_date')}`), 2500);
     } else {
       location.reload();
     }
@@ -3186,7 +3269,9 @@ async function forceUpdateCheck() {
 function checkVersion() {
   const stored = parseInt(localStorage.getItem('wwpm-version') || '0');
   if (stored > 0 && stored < APP_VERSION) {
-    showUpdateBanner();
+    // Auto-update just happened (SW activated + page reloaded) — show changelog
+    localStorage.setItem('wwpm-version', APP_VERSION);
+    setTimeout(showChangelogPopup, 800);
   } else {
     localStorage.setItem('wwpm-version', APP_VERSION);
   }
@@ -3197,21 +3282,15 @@ window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       _swReg = reg;
       reg.update();
-      if (reg.waiting) showUpdateBanner();
-      // Retry after 4s — catches SWs that finish installing after page load
-      setTimeout(() => { if (_swReg?.waiting) showUpdateBanner(); }, 4000);
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
-        });
-      });
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
       });
     }).catch(() => {});
+    // SW now uses skipWaiting() on install — controllerchange triggers auto-reload
+    let _reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      localStorage.setItem('wwpm-version', APP_VERSION);
+      if (_reloading) return;
+      _reloading = true;
       location.reload();
     });
   }

@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v59';
+const CACHE = 'wwpm-v61';
 const ASSETS = [
   '/wwpm-mobile/',
   '/wwpm-mobile/index.html',
@@ -9,7 +9,8 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  // Do NOT call skipWaiting() here — wait for user to click "עדכן עכשיו"
+  // Skip waiting immediately so iOS home-screen PWA gets updates automatically
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -17,11 +18,6 @@ self.addEventListener('activate', e => {
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
   ));
   self.clients.claim();
-});
-
-// Allow the app to trigger skipWaiting via postMessage
-self.addEventListener('message', e => {
-  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
