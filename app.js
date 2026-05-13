@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 60;
+const APP_VERSION = 61;
 
 const CHANGELOG = {
+  61: 'כפתור פידבק — שלח הערות ישירות מהאפליקציה',
   60: 'דף הרשמה — צור חשבון חדש ישירות מהאפליקציה',
   59: 'עדכון אוטומטי — עובד גם ממסך הבית ב-iOS',
   58: 'כפתור עדכון ידני + שיפור מנגנון גילוי עדכונים',
@@ -20,9 +21,11 @@ const CHANGELOG = {
 const SUPABASE_URL = 'https://dleunklezbydfkvvsdys.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8lcFaV4BThB-OHroEqjYTw_7ZKJrz7F';
 
-const EMAILJS_PUBLIC_KEY  = '_0lVXepzH6_REXm47';
-const EMAILJS_SERVICE_ID  = 'service_wg7h8kh';
-const EMAILJS_TEMPLATE_ID = 'template_wptusmp';
+const EMAILJS_PUBLIC_KEY      = '_0lVXepzH6_REXm47';
+const EMAILJS_SERVICE_ID      = 'service_wg7h8kh';
+const EMAILJS_TEMPLATE_ID     = 'template_wptusmp';
+const EMAILJS_FEEDBACK_TEMPLATE = 'template_feedback'; // create in EmailJS dashboard
+const FEEDBACK_ADMIN_EMAIL    = 'leonkolop1@gmail.com';
 
 // ===== SUPABASE CLIENT =====
 const sb = {
@@ -335,6 +338,12 @@ const STRINGS = {
     err_password_short: 'סיסמה חייבת להיות לפחות 4 תווים',
     err_username_taken: 'שם המשתמש כבר תפוס',
     welcome_new: 'ברוך הבא,', creating_account: 'יוצר חשבון...',
+    // Feedback
+    feedback_btn: 'פידבק', feedback_title: 'שלחו לנו פידבק',
+    feedback_desc: 'נשמח לקבל כל הערה, הצעה לשיפור, ביקורת ואפילו מחמאה',
+    feedback_ph: 'כתבו כאן...', feedback_send: 'שלח', feedback_sending: 'שולח...',
+    feedback_sent: 'תודה! הפידבק נשלח', feedback_err: 'שגיאה בשליחה',
+    feedback_empty: 'נא לכתוב משהו קודם', feedback_chars: 'תווים נותרו',
   },
   eng: {
     app_title: 'World Wide Property Manager', login: 'Login',
@@ -505,6 +514,12 @@ const STRINGS = {
     err_password_short: 'Password must be at least 4 characters',
     err_username_taken: 'Username already taken',
     welcome_new: 'Welcome,', creating_account: 'Creating account...',
+    // Feedback
+    feedback_btn: 'Feedback', feedback_title: 'Send us Feedback',
+    feedback_desc: "We'd love to hear your comments, suggestions, criticism, or kind words",
+    feedback_ph: 'Write here...', feedback_send: 'Send', feedback_sending: 'Sending...',
+    feedback_sent: 'Thank you! Feedback sent', feedback_err: 'Error sending',
+    feedback_empty: 'Please write something first', feedback_chars: 'characters remaining',
   },
   rus: {
     app_title: 'Управление недвижимостью', login: 'Вход',
@@ -675,6 +690,12 @@ const STRINGS = {
     err_password_short: 'Пароль минимум 4 символа',
     err_username_taken: 'Имя пользователя занято',
     welcome_new: 'Добро пожаловать,', creating_account: 'Создание аккаунта...',
+    // Feedback
+    feedback_btn: 'Фидбэк', feedback_title: 'Отправьте нам фидбэк',
+    feedback_desc: 'Будем рады любым комментариям, предложениям, критике и похвале',
+    feedback_ph: 'Напишите здесь...', feedback_send: 'Отправить', feedback_sending: 'Отправка...',
+    feedback_sent: 'Спасибо! Фидбэк отправлен', feedback_err: 'Ошибка отправки',
+    feedback_empty: 'Пожалуйста, напишите что-нибудь', feedback_chars: 'символов осталось',
   },
 };
 
@@ -793,10 +814,90 @@ function setLangClose(lang, id) {
   setLang(lang);
 }
 
+// ===== FEEDBACK =====
+function renderFeedbackBtn() {
+  return `<button class="icon-btn feedback-icon-btn" onclick="showFeedbackModal()" title="${t('feedback_btn')}">💬</button>`;
+}
+
+function showFeedbackModal() {
+  const maxLen = 600;
+  const modal = document.getElementById('feedback-modal');
+  if (!modal) return;
+  const ta = document.getElementById('feedback-text');
+  if (ta) { ta.value = ''; }
+  const counter = document.getElementById('feedback-chars');
+  if (counter) counter.textContent = maxLen;
+  const btn = document.getElementById('feedback-send-btn');
+  if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
+  modal.classList.add('show');
+  setTimeout(() => document.getElementById('feedback-text')?.focus(), 200);
+}
+
+async function submitFeedback() {
+  const maxLen = 600;
+  const text = (document.getElementById('feedback-text')?.value || '').trim();
+  if (!text) { toast(t('feedback_empty')); return; }
+  const btn = document.getElementById('feedback-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = t('feedback_sending'); }
+
+  let saved = false;
+  try {
+    await sb.insert('feedback', {
+      username: state.currentUser || 'anonymous',
+      message: text,
+      lang: state.lang,
+      created_at: new Date().toISOString(),
+    });
+    saved = true;
+  } catch { /* table may not exist yet */ }
+
+  try {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_FEEDBACK_TEMPLATE, {
+      from_username: state.currentUser || 'anonymous',
+      message: text,
+      to_email: FEEDBACK_ADMIN_EMAIL,
+    });
+    saved = true;
+  } catch { /* template may not exist yet */ }
+
+  if (saved) {
+    closeModal('feedback-modal');
+    toast(t('feedback_sent'));
+  } else {
+    if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
+    toast(t('feedback_err'));
+  }
+}
+
+function _ensureFeedbackModal() {
+  if (document.getElementById('feedback-modal')) return;
+  const maxLen = 600;
+  const el = document.createElement('div');
+  el.id = 'feedback-modal';
+  el.className = 'modal-overlay';
+  el.setAttribute('onclick', "if(event.target===this)closeModal('feedback-modal')");
+  el.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-title">💬 <span id="fb-title">${t('feedback_title')}</span></div>
+      <p class="feedback-desc" id="fb-desc">${t('feedback_desc')}</p>
+      <textarea id="feedback-text" class="feedback-textarea" maxlength="${maxLen}"
+        placeholder="${t('feedback_ph')}"
+        oninput="document.getElementById('feedback-chars').textContent=${maxLen}-this.value.length"></textarea>
+      <div class="feedback-counter"><span id="feedback-chars">${maxLen}</span> <span id="fb-chars-label">${t('feedback_chars')}</span></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" style="flex:1" onclick="closeModal('feedback-modal')">${t('cancel')}</button>
+        <button id="feedback-send-btn" class="btn-primary" style="flex:2" onclick="submitFeedback()">${t('feedback_send')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
 // ===== RENDER =====
 function render() {
   const app = document.getElementById('app');
   if (!app) return;
+  _ensureFeedbackModal();
   if (state.view === 'login') {
     app.innerHTML = renderLogin();
     setTimeout(() => {
@@ -904,6 +1005,7 @@ function renderHome() {
           <button class="icon-btn" onclick="shareApp()" title="${t('share_title')}">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
+          ${renderFeedbackBtn()}
           ${renderLangDropdown('topbar-lang', true)}
           ${renderCurrencySelector()}
           <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
@@ -992,6 +1094,7 @@ function renderCountry() {
         <div class="top-bar-title">${flagTitle} ${esc(country.name)}</div>
         <div class="top-bar-actions">
           ${renderCurrencySelector()}
+          ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>` : ''}
         </div>
       </header>
@@ -1336,6 +1439,7 @@ function renderProperty() {
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
         <div class="top-bar-actions">
           ${renderCurrencySelector()}
+          ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
           <button class="icon-btn" onclick="window.print()" title="${t('print')}">🖨️</button>
@@ -1821,7 +1925,7 @@ function renderAnalytics() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">📊 ${t('analytics_header')}</div>
-        ${renderCurrencySelector()}
+        <div class="top-bar-actions">${renderFeedbackBtn()}${renderCurrencySelector()}</div>
       </header>
       <div class="content">
         ${renderRateBar()}

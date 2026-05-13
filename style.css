@@ -1425,3 +1425,47 @@ body::after {
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
+
+/* ===== FEEDBACK ===== */
+.feedback-icon-btn {
+  color: var(--accent2) !important;
+  opacity: 0.85;
+}
+.feedback-icon-btn:active { opacity: 1; }
+
+.feedback-desc {
+  font-size: 0.84rem;
+  color: var(--text2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.feedback-textarea {
+  background: rgba(99,102,241,0.06);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.93rem;
+  padding: 13px 16px;
+  outline: none;
+  width: 100%;
+  min-height: 130px;
+  resize: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  font-family: inherit;
+  direction: rtl;
+  text-align: right;
+}
+.feedback-textarea:focus {
+  border-color: var(--accent);
+  background: rgba(99,102,241,0.1);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+.feedback-counter {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: left;
+  margin-top: -4px;
+  font-feature-settings: 'tnum';
+}
