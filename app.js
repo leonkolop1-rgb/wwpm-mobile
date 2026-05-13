@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 62;
+const APP_VERSION = 63;
 
 const CHANGELOG = {
+  63: 'פידבק נשלח ישירות למייל — ללא פתיחת אפליקציית מייל',
   62: 'עדכון אוטומטי — עכשיו עובד בלי לפתוח ספארי',
   61: 'כפתור פידבק — שלח הערות ישירות מהאפליקציה',
   60: 'דף הרשמה — צור חשבון חדש ישירות מהאפליקציה',
@@ -25,7 +26,7 @@ const SUPABASE_KEY = 'sb_publishable_8lcFaV4BThB-OHroEqjYTw_7ZKJrz7F';
 const EMAILJS_PUBLIC_KEY      = '_0lVXepzH6_REXm47';
 const EMAILJS_SERVICE_ID      = 'service_wg7h8kh';
 const EMAILJS_TEMPLATE_ID     = 'template_wptusmp';
-const EMAILJS_FEEDBACK_TEMPLATE = 'template_feedback'; // create in EmailJS dashboard
+const EMAILJS_FEEDBACK_TEMPLATE = 'template_s8b3mag';
 const FEEDBACK_ADMIN_EMAIL    = 'worldwidepropertymanager@gmail.com';
 
 // ===== SUPABASE CLIENT =====
@@ -840,29 +841,21 @@ async function submitFeedback() {
   const btn = document.getElementById('feedback-send-btn');
   if (btn) { btn.disabled = true; btn.textContent = t('feedback_sending'); }
 
-  // Try Supabase silently (bonus storage if table exists)
   try {
-    await sb.insert('feedback', {
-      username: state.currentUser || 'anonymous',
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_FEEDBACK_TEMPLATE, {
+      from_name: state.currentUser || 'anonymous',
+      name: state.currentUser || 'anonymous',
       message: text,
-      lang: state.lang,
-      created_at: new Date().toISOString(),
+      title: `פידבק מ-${state.currentUser || 'anonymous'}`,
     });
-  } catch { /* table may not exist */ }
-
-  // Open mailto via hidden link — most reliable on iOS PWA
-  const subject = encodeURIComponent(`WWPM Feedback from ${state.currentUser || 'user'}`);
-  const body = encodeURIComponent(text);
-  const a = document.createElement('a');
-  a.href = `mailto:${FEEDBACK_ADMIN_EMAIL}?subject=${subject}&body=${body}`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => a.remove(), 500);
-
-  closeModal('feedback-modal');
-  toast(t('feedback_sent'));
-  if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
+    closeModal('feedback-modal');
+    toast(t('feedback_sent'));
+  } catch {
+    toast(t('error_sending'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = t('feedback_send'); }
+  }
 }
 
 function _ensureFeedbackModal() {
