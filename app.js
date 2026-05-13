@@ -849,10 +849,15 @@ async function submitFeedback() {
     });
   } catch { /* table may not exist */ }
 
-  // Open mailto — works on every device, no backend needed
+  // Open mailto via hidden link — most reliable on iOS PWA
   const subject = encodeURIComponent(`WWPM Feedback from ${state.currentUser || 'user'}`);
   const body = encodeURIComponent(text);
-  window.location.href = `mailto:${FEEDBACK_ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+  const a = document.createElement('a');
+  a.href = `mailto:${FEEDBACK_ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 500);
 
   closeModal('feedback-modal');
   toast(t('feedback_sent'));
