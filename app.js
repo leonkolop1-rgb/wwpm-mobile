@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 57;
+const APP_VERSION = 58;
 
 const CHANGELOG = {
+  58: 'כפתור עדכון ידני + שיפור מנגנון גילוי עדכונים',
   57: 'תרגום מלא לאנגלית ורוסית — כל כפתור, מודל, הודעה וגרף',
   56: 'דרופ דאון מטבע בכל דף + שער המרה חי מ-API בזמן אמת',
   55: 'שיפור עדכון אוטומטי + תיקון שערי חליפין',
@@ -323,6 +324,7 @@ const STRINGS = {
     // Misc
     display_currency_title: 'מטבע תצוגה', share_msg_title: 'WWPM — נתוני הנכסים שלי', link_copied: 'הלינק הועתק',
     confirm_delete_country: 'למחוק את', confirm_delete_country_props: 'נכסים יימחקו לצמיתות',
+    checking_update: 'בודק עדכונים...', up_to_date: 'האפליקציה מעודכנת',
   },
   eng: {
     app_title: 'World Wide Property Manager', login: 'Login',
@@ -485,6 +487,7 @@ const STRINGS = {
     // Misc
     display_currency_title: 'Display currency', share_msg_title: 'WWPM — My property data', link_copied: 'Link copied',
     confirm_delete_country: 'Delete', confirm_delete_country_props: 'properties will be permanently deleted',
+    checking_update: 'Checking for updates...', up_to_date: 'App is up to date',
   },
   rus: {
     app_title: 'Управление недвижимостью', login: 'Вход',
@@ -647,6 +650,7 @@ const STRINGS = {
     // Misc
     display_currency_title: 'Валюта', share_msg_title: 'WWPM — Мои данные недвижимости', link_copied: 'Ссылка скопирована',
     confirm_delete_country: 'Удалить', confirm_delete_country_props: 'объектов будет удалено',
+    checking_update: 'Проверка обновлений...', up_to_date: 'Приложение обновлено',
   },
 };
 
@@ -862,6 +866,7 @@ function renderHome() {
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.viewOwner || state.currentUser)}</span>
         <span id="online-dot" class="online-dot" title="${t('connected')}"></span>
+        <button class="version-chip" onclick="forceUpdateCheck()" title="${t('checking_update')}">v${APP_VERSION}</button>
         <button class="logout-btn" onclick="doLogout()">${t('logout')}</button>
       </div>
     </div>
@@ -3159,6 +3164,25 @@ function applyUpdate() {
   }
 }
 
+async function forceUpdateCheck() {
+  toast(t('checking_update'));
+  try {
+    if ('serviceWorker' in navigator && _swReg) {
+      await _swReg.update();
+      await new Promise(r => setTimeout(r, 2000));
+      if (_swReg.waiting) {
+        showUpdateBanner();
+      } else {
+        toast(`✓ ${t('up_to_date')}`);
+      }
+    } else {
+      location.reload();
+    }
+  } catch {
+    location.reload();
+  }
+}
+
 function checkVersion() {
   const stored = parseInt(localStorage.getItem('wwpm-version') || '0');
   if (stored > 0 && stored < APP_VERSION) {
@@ -3174,10 +3198,12 @@ window.addEventListener('load', () => {
       _swReg = reg;
       reg.update();
       if (reg.waiting) showUpdateBanner();
+      // Retry after 4s — catches SWs that finish installing after page load
+      setTimeout(() => { if (_swReg?.waiting) showUpdateBanner(); }, 4000);
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed') showUpdateBanner();
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
         });
       });
       document.addEventListener('visibilitychange', () => {

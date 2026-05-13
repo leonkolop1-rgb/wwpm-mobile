@@ -747,6 +747,19 @@ body::after {
   transition: background var(--transition), border-color var(--transition);
 }
 .logout-btn:active { background: rgba(239,68,68,0.18); }
+.version-chip {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.version-chip:active { opacity: 1; }
 
 .online-dot {
   width: 8px; height: 8px;
