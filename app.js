@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 79;
+const APP_VERSION = 80;
 
 const CHANGELOG = {
+  80: 'פופ-אפ עדכון ורוד — מתריע על גרסה חדשה עם כפתור עדכן עכשיו',
   79: 'שיתוף PDF תוקן — עובד על iOS ואנדרואיד דרך תפריט הדפסה',
   78: 'כפתור בדוק עדכונים — מציג גרסה חדשה זמינה בצבע ורוד',
   77: 'שיתוף PDF — שתף כל עמוד כקובץ PDF ישירות מהאפליקציה',
@@ -2913,27 +2914,68 @@ function showChangelogPopup() {
   setTimeout(() => pop.remove(), 5000);
 }
 
-function showUpdateBanner() {
-  const id = '_update-banner';
-  if (document.getElementById(id)) return;
-  const el = document.createElement('div');
-  el.id = id;
-  Object.assign(el.style, {
-    position: 'fixed', bottom: '0', left: '0', right: '0',
-    background: 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)',
-    color: 'white', fontSize: '0.85rem', fontWeight: '700',
-    padding: '14px 18px',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    zIndex: '9999', boxShadow: '0 -4px 28px rgba(99,102,241,0.45)',
-    gap: '10px',
+function showUpdatePopup() {
+  if (document.getElementById('_update-popup')) return;
+
+  const note = CHANGELOG[APP_VERSION] || '';
+
+  const overlay = document.createElement('div');
+  overlay.id = '_update-popup';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.55)',
+    backdropFilter: 'blur(6px)',
+    zIndex: '10000',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    padding: '0 0 32px',
+    opacity: '0', transition: 'opacity 0.25s ease',
   });
-  el.innerHTML = `
-    <span>🚀 ${t('update_available')} ${APP_VERSION} ${t('update_available_suffix')}</span>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button onclick="showChangelogPopup()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.5);border-radius:50%;width:28px;height:28px;font-size:0.8rem;font-weight:800;cursor:pointer;line-height:1">i</button>
-      <button onclick="applyUpdate()" style="background:white;color:#6366f1;border:none;border-radius:9px;padding:7px 16px;font-size:0.8rem;font-weight:800;cursor:pointer">${t('update_now')}</button>
-    </div>`;
-  document.body.appendChild(el);
+
+  const card = document.createElement('div');
+  Object.assign(card.style, {
+    background: 'linear-gradient(145deg, #be185d 0%, #ec4899 45%, #f472b6 100%)',
+    borderRadius: '24px',
+    padding: '28px 24px 24px',
+    width: 'calc(100% - 32px)',
+    maxWidth: '420px',
+    color: 'white',
+    boxShadow: '0 8px 48px rgba(236,72,153,0.55), 0 2px 12px rgba(0,0,0,0.4)',
+    transform: 'translateY(40px)',
+    transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)',
+    textAlign: 'center',
+    direction: 'rtl',
+  });
+
+  card.innerHTML = `
+    <div style="font-size:2.8rem;line-height:1;margin-bottom:10px">✨</div>
+    <div style="font-size:1.25rem;font-weight:800;letter-spacing:-0.01em;margin-bottom:4px">${t('new_version_btn').replace('✨ ', '')}</div>
+    <div style="font-size:0.78rem;opacity:0.75;margin-bottom:${note ? '14px' : '20px'}">גרסה ${APP_VERSION}</div>
+    ${note ? `<div style="background:rgba(0,0,0,0.18);border-radius:12px;padding:10px 14px;font-size:0.84rem;line-height:1.5;margin-bottom:20px;text-align:right">${esc(note)}</div>` : ''}
+    <button onclick="applyUpdate()" style="
+      width:100%;background:white;color:#be185d;border:none;
+      border-radius:14px;padding:14px;font-size:1rem;font-weight:800;
+      cursor:pointer;letter-spacing:0.01em;margin-bottom:10px;
+      box-shadow:0 2px 12px rgba(0,0,0,0.15);
+      -webkit-tap-highlight-color:transparent;">
+      🚀 ${t('update_now')}
+    </button>
+    <button onclick="document.getElementById('_update-popup').remove()" style="
+      width:100%;background:rgba(255,255,255,0.15);color:white;
+      border:1px solid rgba(255,255,255,0.3);border-radius:14px;
+      padding:11px;font-size:0.9rem;font-weight:600;cursor:pointer;
+      -webkit-tap-highlight-color:transparent;">
+      אחר כך
+    </button>`;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    card.style.transform = 'translateY(0)';
+  });
+
   haptic(12);
 }
 
@@ -3576,6 +3618,7 @@ async function forceUpdateCheck() {
   if (_swReg.waiting) {
     state.updateAvailable = true;
     render();
+    showUpdatePopup();
   } else {
     toast('✓ ' + t('up_to_date'));
   }
@@ -3607,6 +3650,7 @@ window.addEventListener('load', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             state.updateAvailable = true;
             render();
+            showUpdatePopup();
           }
         });
       });
