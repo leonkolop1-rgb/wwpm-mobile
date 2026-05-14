@@ -362,6 +362,7 @@ const STRINGS = {
     feedback_empty: 'נא לכתוב משהו קודם', feedback_chars: 'תווים נותרו',
     info_btn_title: 'מידע על האפליקציה',
     info_title: 'מידע על האפליקציה',
+    login_info_title: 'מי אני בעצם?',
     info_intro1: 'האפליקציה הזו היא <strong>כלי חברי ופשוט</strong> שנועד לעשות לכם סדר בכל ההשקעות שלכם — בין אם הן בארץ ובין אם הן פזורות ברחבי העולם.',
     info_intro2: 'במקום לנהל גיליונות אקסל מפוזרים — הכל נמצא כאן במקום אחד: מסודר, ברור, ויזואלי.',
     info_features_title: 'מה תוכלו לראות כאן:',
@@ -551,6 +552,7 @@ const STRINGS = {
     feedback_empty: 'Please write something first', feedback_chars: 'characters remaining',
     info_btn_title: 'About this app',
     info_title: 'About this app',
+    login_info_title: 'Who am I exactly?',
     info_intro1: 'This app is a <strong>simple and friendly tool</strong> designed to bring order to all your investments — whether local or scattered around the world.',
     info_intro2: 'Instead of managing scattered spreadsheets — everything is here in one place: organized, clear, and visual.',
     info_features_title: 'What you can see here:',
@@ -740,6 +742,7 @@ const STRINGS = {
     feedback_empty: 'Пожалуйста, напишите что-нибудь', feedback_chars: 'символов осталось',
     info_btn_title: 'О приложении',
     info_title: 'О приложении',
+    login_info_title: 'Кто я такой?',
     info_intro1: 'Это приложение — <strong>простой и удобный инструмент</strong> для систематизации всех ваших инвестиций — как местных, так и зарубежных.',
     info_intro2: 'Вместо разрозненных таблиц — всё собрано в одном месте: структурированно, наглядно, понятно.',
     info_features_title: 'Что вы найдёте здесь:',
@@ -1050,7 +1053,7 @@ function renderLogin() {
         <button class="btn-forgot-password" onclick="doForgotPassword()">${t('forgot_password')}</button>`}
       </div>
       <div class="login-info-box">
-        <div class="login-info-title">ℹ️ ${t('info_title')}</div>
+        <div class="login-info-title">ℹ️ ${t('login_info_title')}</div>
         <p class="login-info-text">${t('info_intro1')}</p>
         <ul class="login-info-list">
           <li>${t('info_f1')}</li>
