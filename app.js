@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 75;
+const APP_VERSION = 76;
 
 const CHANGELOG = {
+  76: 'פילטר מדינות בדף הראשי עם דגלים — בחר מדינה וראה רק אותה',
   75: 'דרופ דאון מדינות בדף הראשי — ניווט מהיר למדינה ספציפית',
   74: 'תנאי שימוש בהרשמה — חובה לאשר לפני יצירת חשבון',
   73: 'פילטר מדינה באנליטיקה — צפייה בנתונים לפי מדינה ספציפית',
@@ -170,6 +171,7 @@ const state = {
   sortProps: 'default',
   searchQuery: '',
   analyticsCountry: null,
+  homeCountryFilter: null,
   adminUsers: null,
   rentMonthSel: [],
 };
@@ -820,6 +822,20 @@ const FLAGS = {
   'הונגריה':'🇭🇺','Hungary':'🇭🇺','קנדה':'🇨🇦','Canada':'🇨🇦',
   'אוסטרליה':'🇦🇺','Australia':'🇦🇺',
 };
+const FLAG_IMG_EMOJI = {
+  'flags/israel.png':'🇮🇱','flags/us.png':'🇺🇸','flags/georgia.png':'🇬🇪',
+  'flags/spain.png':'🇪🇸','flags/portugal.png':'🇵🇹','flags/greece.png':'🇬🇷',
+  'flags/cyprus.png':'🇨🇾','flags/germany.png':'🇩🇪','flags/italy.png':'🇮🇹',
+  'flags/france.png':'🇫🇷','flags/gb.png':'🇬🇧','flags/poland.png':'🇵🇱',
+  'flags/romania.png':'🇷🇴','flags/serbia.png':'🇷🇸','flags/uae.png':'🇦🇪',
+  'flags/russia.png':'🇷🇺',
+};
+function getCountryFlagEmoji(name) {
+  const n = (name || '').trim();
+  const img = FLAGIMGS[n] || FLAGIMGS[n.toUpperCase()] || FLAGIMGS[n.toLowerCase()];
+  if (img) return FLAG_IMG_EMOJI[img] || '🌍';
+  return FLAGS[n] || '🌍';
+}
 function getFlagHtml(name, imgClass = 'country-flag-img', fallbackClass = 'country-flag') {
   const n = (name || '').trim();
   const img = FLAGIMGS[n] || FLAGIMGS[n.toUpperCase()] || FLAGIMGS[n.toLowerCase()];
@@ -1084,7 +1100,10 @@ function renderSplash() {
 }
 
 function renderHome() {
-  const countries = state.data?.countries || [];
+  const allCountries = state.data?.countries || [];
+  const countries = state.homeCountryFilter
+    ? allCountries.filter(c => c.id === state.homeCountryFilter)
+    : allCountries;
   return `
     <div class="page">
       <header class="top-bar">
@@ -1105,7 +1124,7 @@ function renderHome() {
         ${renderRateBar()}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
-          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">${t('countries_section')}</div><select class="analytics-country-filter" onchange="if(this.value)goToCountry(this.value)"><option value="">${t('select_country')}</option>${countries.map(c=>`<option value="${esc(c.id)}">${esc(c.name)} (${(c.properties||[]).length})</option>`).join('')}</select>${countries.map(renderCountryCard).join('')}`
+          : `${renderPortfolioSummary(allCountries)}${renderAlerts(allCountries)}<div class="section-label">${t('countries_section')}</div><select class="analytics-country-filter" onchange="setHomeCountryFilter(this.value)"><option value="">${t('select_country')}</option>${allCountries.map(c=>`<option value="${esc(c.id)}" ${state.homeCountryFilter===c.id?'selected':''}>${getCountryFlagEmoji(c.name)} ${esc(c.name)} (${(c.properties||[]).length})</option>`).join('')}</select>${countries.map(renderCountryCard).join('')}`
         }
       </div>
       <div class="bottom-bar">
@@ -2003,6 +2022,11 @@ function renderRentHistory() {
 
 function setAnalyticsCountry(id) {
   state.analyticsCountry = id || null;
+  render();
+}
+
+function setHomeCountryFilter(id) {
+  state.homeCountryFilter = id || null;
   render();
 }
 
