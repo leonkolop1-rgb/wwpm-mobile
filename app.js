@@ -3151,19 +3151,18 @@ async function sharePDF() {
 
   toast('⏳ ' + t('generating_pdf'));
 
-  const page       = document.querySelector('.page');
-  const bottomBar  = document.querySelector('.bottom-bar');
-  const topBar     = document.querySelector('.top-bar');
+  const page      = document.querySelector('.page');
+  const bottomBar = document.querySelector('.bottom-bar');
+  const topBar    = document.querySelector('.top-bar');
 
-  // Expand for full capture
   const prev = {
-    pageH:   page?.style.height,       pageOv:  page?.style.overflow,
-    contH:   content.style.height,     contOv:  content.style.overflow,
-    contPb:  content.style.paddingBottom,
+    pageH: page?.style.height,  pageOv: page?.style.overflow,
+    contH: content.style.height, contOv: content.style.overflow,
+    contPb: content.style.paddingBottom,
   };
-  if (page)    { page.style.height = 'auto'; page.style.overflow = 'visible'; }
-  content.style.height      = 'auto';
-  content.style.overflow    = 'visible';
+  if (page) { page.style.height = 'auto'; page.style.overflow = 'visible'; }
+  content.style.height = 'auto';
+  content.style.overflow = 'visible';
   content.style.paddingBottom = '24px';
   if (bottomBar) bottomBar.style.display = 'none';
   if (topBar)    topBar.style.display    = 'none';
@@ -3182,9 +3181,9 @@ async function sharePDF() {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    const pageW  = pdf.internal.pageSize.getWidth();
-    const pageH  = pdf.internal.pageSize.getHeight();
-    const imgH   = (canvas.height * pageW) / canvas.width;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgH  = (canvas.height * pageW) / canvas.width;
 
     let remaining = imgH;
     let posY = 0;
@@ -3199,23 +3198,32 @@ async function sharePDF() {
 
     const filename = _getPDFFilename();
     const blob = pdf.output('blob');
-    const file = new File([blob], filename, { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
 
+    // Try Web Share API with file (iOS 15+ Safari)
+    const file = new File([blob], filename, { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename.replace('.pdf', '') });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      try {
+        await navigator.share({ files: [file], title: filename.replace('.pdf', '') });
+        URL.revokeObjectURL(blobUrl);
+        return;
+      } catch (shareErr) {
+        if (shareErr.name === 'AbortError') { URL.revokeObjectURL(blobUrl); return; }
+        // fall through to window.open
+      }
     }
+
+    // Fallback: open blob URL in new tab → iOS Safari shows PDF viewer with its own share button
+    window.open(blobUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+
   } catch (err) {
     toast('❌ ' + t('pdf_error'));
     console.error('PDF:', err);
   } finally {
-    if (page)    { page.style.height = prev.pageH; page.style.overflow = prev.pageOv; }
-    content.style.height      = prev.contH;
-    content.style.overflow    = prev.contOv;
+    if (page) { page.style.height = prev.pageH; page.style.overflow = prev.pageOv; }
+    content.style.height = prev.contH;
+    content.style.overflow = prev.contOv;
     content.style.paddingBottom = prev.contPb;
     if (bottomBar) bottomBar.style.display = '';
     if (topBar)    topBar.style.display    = '';
