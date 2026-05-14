@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 68;
+const APP_VERSION = 69;
 
 const CHANGELOG = {
+  69: 'תיקון כפתור i — עכשיו פותח מודל מידע',
   68: 'כפתור i — מידע על האפליקציה + תיבת מידע ירוקה בכניסה',
   67: 'עיצוב מסך ראשי — מרווח ויפה יותר',
   66: 'כפתור עדכון — לוחצים ומרענן מיד',
@@ -865,28 +866,29 @@ function renderInfoBtn() {
 
 function showInfoModal() {
   const id = 'info-modal';
-  if (document.getElementById(id)) { closeModal(id); return; }
-  const el = document.createElement('div');
-  el.id = id;
-  el.className = 'modal-overlay';
-  el.setAttribute('onclick', `if(event.target===this)closeModal('${id}')`);
-  el.innerHTML = `
-    <div class="modal-card info-modal-card">
-      <div class="modal-title">ℹ️ ${t('info_title')}</div>
-      <p class="info-para">${t('info_intro1')}</p>
-      <p class="info-para">${t('info_intro2')}</p>
-      <div class="info-features-title">${t('info_features_title')}</div>
-      <ul class="info-list">
-        <li>${t('info_f1')}</li>
-        <li>${t('info_f2')}</li>
-        <li>${t('info_f3')}</li>
-        <li>${t('info_f4')}</li>
-      </ul>
-      <p class="info-footer">${t('info_footer')}</p>
-      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal('${id}')">${t('info_got_it')}</button>
-    </div>`;
-  document.body.appendChild(el);
-  requestAnimationFrame(() => el.classList.add('visible'));
+  if (!document.getElementById(id)) {
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = 'modal-overlay';
+    el.setAttribute('onclick', `if(event.target===this)closeModal('${id}')`);
+    el.innerHTML = `
+      <div class="modal-card info-modal-card">
+        <div class="modal-title">ℹ️ ${t('info_title')}</div>
+        <p class="info-para">${t('info_intro1')}</p>
+        <p class="info-para">${t('info_intro2')}</p>
+        <div class="info-features-title">${t('info_features_title')}</div>
+        <ul class="info-list">
+          <li>${t('info_f1')}</li>
+          <li>${t('info_f2')}</li>
+          <li>${t('info_f3')}</li>
+          <li>${t('info_f4')}</li>
+        </ul>
+        <p class="info-footer">${t('info_footer')}</p>
+        <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal('${id}')">${t('info_got_it')}</button>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  showModal(id);
 }
 
 function showFeedbackModal() {
