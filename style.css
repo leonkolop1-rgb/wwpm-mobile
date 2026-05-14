@@ -1277,23 +1277,41 @@ body::after {
 
 /* ===== PRINT ===== */
 @media print {
-  body::before, body::after { display: none; }
-  .top-bar, .bottom-bar, .back-btn, .icon-btn, .modal-overlay, button { display: none !important; }
-  .page { min-height: unset; animation: none; }
-  .content { padding: 0; overflow: visible; }
-  body { background: white; color: black; }
-  .detail-card, .value-tile, .country-card, .prop-card {
-    background: white;
-    border: 1px solid #ddd;
-    box-shadow: none;
-    backdrop-filter: none;
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body, html { background: #0f0f14 !important; color: #e2e8f0 !important; margin: 0; }
+
+  /* Hide all chrome */
+  .top-bar, .bottom-bar, .back-btn, .modal-overlay,
+  .sort-bar, .search-wrap, .analytics-country-filter,
+  .lang-dropdown, .rate-bar, .login-info-box,
+  .feedback-btn, .update-check-btn, .version-chip,
+  .currency-selector, .logout-btn, .icon-btn,
+  select, input[type="search"] { display: none !important; }
+
+  /* Expand page to full content */
+  .page { height: auto !important; overflow: visible !important; min-height: unset !important; animation: none !important; }
+  .content { overflow: visible !important; height: auto !important; padding: 12px !important; }
+
+  /* Cards stay dark */
+  .detail-card, .value-tile, .country-card, .prop-card,
+  .maps-card, .portfolio-summary, .section-label {
+    background: #1e1e2e !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    break-inside: avoid;
   }
-  .value-tile::before { display: none; }
-  .portfolio-total-num, .value-tile-num, .detail-value, .prop-value-num {
-    text-shadow: none;
-    -webkit-text-fill-color: black;
-    background: none;
+
+  /* Keep gradient text readable */
+  .portfolio-total-num, .value-tile-num {
+    background: none !important;
+    -webkit-text-fill-color: #a5b4fc !important;
+    color: #a5b4fc !important;
+    text-shadow: none !important;
   }
+
+  .value-tile::before { display: none !important; }
 }
 
 /* ===== FILES ===== */

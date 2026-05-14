@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 78;
+const APP_VERSION = 79;
 
 const CHANGELOG = {
+  79: 'שיתוף PDF תוקן — עובד על iOS ואנדרואיד דרך תפריט הדפסה',
   78: 'כפתור בדוק עדכונים — מציג גרסה חדשה זמינה בצבע ורוד',
   77: 'שיתוף PDF — שתף כל עמוד כקובץ PDF ישירות מהאפליקציה',
   76: 'פילטר מדינות בדף הראשי עם דגלים — בחר מדינה וראה רק אותה',
@@ -3135,124 +3136,8 @@ function shareApp() {
   }
 }
 
-function _getPDFFilename() {
-  const v = state.view;
-  if (v === 'country') {
-    const c = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
-    return `WWPM-${(c?.name || 'country')}.pdf`;
-  }
-  if (v === 'property') {
-    const c = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
-    const p = (c?.properties || []).find(p => p.id === state.currentPropertyId);
-    return `WWPM-${(p?.name || p?.address || 'property')}.pdf`;
-  }
-  if (v === 'analytics')    return 'WWPM-Analytics.pdf';
-  if (v === 'expenses')     return 'WWPM-Expenses.pdf';
-  if (v === 'rent-history') return 'WWPM-RentHistory.pdf';
-  return 'WWPM-Portfolio.pdf';
-}
-
-async function sharePDF() {
-  const content = document.querySelector('.content');
-  if (!content) return;
-
-  // Libraries not yet loaded from CDN — fall back to print dialog
-  if (typeof html2canvas === 'undefined' || !window.jspdf) {
-    window.print();
-    return;
-  }
-
-  toast('⏳ ' + t('generating_pdf'));
-
-  const page      = document.querySelector('.page');
-  const bottomBar = document.querySelector('.bottom-bar');
-  const topBar    = document.querySelector('.top-bar');
-
-  const prev = {
-    pageH: page?.style.height,  pageOv: page?.style.overflow,
-    contH: content.style.height, contOv: content.style.overflow,
-    contPb: content.style.paddingBottom,
-  };
-  if (page) { page.style.height = 'auto'; page.style.overflow = 'visible'; }
-  content.style.height = 'auto';
-  content.style.overflow = 'visible';
-  content.style.paddingBottom = '24px';
-  if (bottomBar) bottomBar.style.display = 'none';
-  if (topBar)    topBar.style.display    = 'none';
-
-  try {
-    const canvas = await html2canvas(content, {
-      scale: 1.5,              // lower than 2 to stay within iOS canvas memory limits
-      useCORS: true,
-      allowTaint: false,       // keep false — allowTaint taints the canvas, blocking toDataURL
-      backgroundColor: '#0f0f14',
-      foreignObjectRendering: false,  // more compatible with iOS WebKit
-      imageTimeout: 15000,
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.85);
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgH  = (canvas.height * pageW) / canvas.width;
-
-    let remaining = imgH;
-    let posY = 0;
-    pdf.addImage(imgData, 'JPEG', 0, posY, pageW, imgH);
-    remaining -= pageH;
-    while (remaining > 0) {
-      posY -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, posY, pageW, imgH);
-      remaining -= pageH;
-    }
-
-    const filename = _getPDFFilename();
-    const blob = pdf.output('blob');
-    const blobUrl = URL.createObjectURL(blob);
-
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    // Try Web Share API with file (iOS 15+, Android Chrome 89+)
-    const file = new File([blob], filename, { type: 'application/pdf' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: filename.replace('.pdf', '') });
-        URL.revokeObjectURL(blobUrl);
-        return;
-      } catch (shareErr) {
-        if (shareErr.name === 'AbortError') { URL.revokeObjectURL(blobUrl); return; }
-      }
-    }
-
-    // Fallback: iOS → open in Safari PDF viewer; Android/desktop → download
-    if (isIOS) {
-      window.open(blobUrl, '_blank');
-    } else {
-      const a = document.createElement('a');
-      a.href = blobUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-
-  } catch (err) {
-    // Show actual error for easier debugging
-    toast('❌ ' + (err.message || t('pdf_error')));
-    console.error('PDF error:', err);
-  } finally {
-    if (page) { page.style.height = prev.pageH; page.style.overflow = prev.pageOv; }
-    content.style.height = prev.contH;
-    content.style.overflow = prev.contOv;
-    content.style.paddingBottom = prev.contPb;
-    if (bottomBar) bottomBar.style.display = '';
-    if (topBar)    topBar.style.display    = '';
-  }
+function sharePDF() {
+  window.print();
 }
 
 // ===== FILE UPLOAD =====
