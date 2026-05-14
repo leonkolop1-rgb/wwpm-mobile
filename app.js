@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 84;
+const APP_VERSION = 85;
 
 const CHANGELOG = {
+  85: 'תרגום כפתור פירוט שווי + אישור יציאה — שואל לפני יציאה מהאפליקציה',
   84: 'הערות בעדכון שווי — הוסף הערה לכל עדכון, כפתור i לצפייה בהיסטוריה',
   83: 'ריבוע עליית שווי — רואים בכמה עלה הנכס מאז הרכישה עם אחוז',
   82: 'כפתור פירוט שווי זהב — מקשר מהדף הראשי לאנליטיקה',
@@ -212,7 +213,8 @@ const STRINGS = {
     no_countries: 'אין מדינות עדיין',
     no_properties: 'אין נכסים במדינה זו',
     properties: 'נכסים', loading: 'טוען...',
-    logout: 'יציאה', back: 'חזור',
+    logout: 'יציאה', back: 'חזור', confirm_logout: 'האם אתה בטוח שברצונך לצאת מהאפליקציה?',
+    portfolio_details: 'פירוט שווי',
     current_value: 'שווי נוכחי',
     purchase_price: 'מחיר רכישה',
     monthly_rent: 'שכירות חודשית',
@@ -407,7 +409,8 @@ const STRINGS = {
     no_countries: 'No countries yet',
     no_properties: 'No properties in this country',
     properties: 'Properties', loading: 'Loading...',
-    logout: 'Sign Out', back: 'Back',
+    logout: 'Sign Out', back: 'Back', confirm_logout: 'Are you sure you want to sign out?',
+    portfolio_details: 'Value Breakdown',
     current_value: 'Current Value',
     purchase_price: 'Purchase Price',
     monthly_rent: 'Monthly Rent',
@@ -602,7 +605,8 @@ const STRINGS = {
     no_countries: 'Стран пока нет',
     no_properties: 'Нет объектов в этой стране',
     properties: 'Объектов', loading: 'Загрузка...',
-    logout: 'Выйти', back: 'Назад',
+    logout: 'Выйти', back: 'Назад', confirm_logout: 'Вы уверены, что хотите выйти?',
+    portfolio_details: 'Детализация стоимости',
     current_value: 'Текущая стоимость',
     purchase_price: 'Цена покупки',
     monthly_rent: 'Аренда в месяц',
@@ -2498,7 +2502,7 @@ function renderPortfolioSummary(countries) {
       <div class="portfolio-total-label">${t('portfolio_value')} (${dc})</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
         <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
-        <button class="portfolio-details-btn" onclick="goToAnalytics()">פירוט שווי</button>
+        <button class="portfolio-details-btn" onclick="goToAnalytics()">${t('portfolio_details')}</button>
       </div>
       <div class="portfolio-stats">
         <div class="portfolio-stat"><div class="portfolio-stat-label">${t('monthly_rent_label')} (${curMonthHeb})</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
@@ -3586,6 +3590,7 @@ async function submitRentPayment(currency) {
 }
 
 function doLogout() {
+  if (!confirm(t('confirm_logout'))) return;
   localStorage.removeItem('wwpm-session');
   Object.assign(state, { currentUser: null, isAdmin: false, data: null, view: 'login', error: null, loading: false });
   render();
