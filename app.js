@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 69;
+const APP_VERSION = 70;
 
 const CHANGELOG = {
+  70: 'מטבע מלא בכל עמוד + בחירת שפה בכל עמוד',
   69: 'תיקון כפתור i — עכשיו פותח מודל מידע',
   68: 'כפתור i — מידע על האפליקציה + תיבת מידע ירוקה בכניסה',
   67: 'עיצוב מסך ראשי — מרווח ויפה יותר',
@@ -1162,6 +1163,7 @@ function renderCountry() {
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">${flagTitle} ${esc(country.name)}</div>
         <div class="top-bar-actions">
+          ${renderLangDropdown('lang-c', true)}
           ${renderCurrencySelector()}
           ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>` : ''}
@@ -1507,6 +1509,7 @@ function renderProperty() {
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
         <div class="top-bar-actions">
+          ${renderLangDropdown('lang-p', true)}
           ${renderCurrencySelector()}
           ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
@@ -1817,7 +1820,7 @@ function renderExpenses() {
   const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
   if (!p) { goBack(); return ''; }
 
-  const currency = country?.currency || p.currency || 'USD';
+  const currency = state.displayCurrency || country?.currency || p.currency || 'USD';
   const curSym = CURRENCIES[currency] || currency;
   const catMap = {
     maintenance:  { label: `🔧 ${t('maintenance')}`,         key: 'maintenance',      items: p.maintenance || [] },
@@ -1838,7 +1841,10 @@ function renderExpenses() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">${cat.label}</div>
-        <button class="icon-btn" onclick="showModal('exp-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
+        <div class="top-bar-actions">
+          ${renderLangDropdown('lang-e', true)}
+          <button class="icon-btn" onclick="showModal('exp-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
+        </div>
       </header>
       <div class="content">
         <div class="value-tile" style="background:var(--surface)">
@@ -1911,6 +1917,7 @@ function renderRentHistory() {
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">💵 ${t('rent_history_title')}</div>
         <div class="top-bar-actions">
+          ${renderLangDropdown('lang-r', true)}
           ${renderCurrencySelector()}
           <button class="icon-btn" onclick="showModal('rent-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
         </div>
@@ -1994,7 +2001,7 @@ function renderAnalytics() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">📊 ${t('analytics_header')}</div>
-        <div class="top-bar-actions">${renderFeedbackBtn()}${renderCurrencySelector()}</div>
+        <div class="top-bar-actions">${renderLangDropdown('lang-a', true)}${renderFeedbackBtn()}${renderCurrencySelector()}</div>
       </header>
       <div class="content">
         ${renderRateBar()}
@@ -2155,17 +2162,18 @@ function renderYearlySummary(countries) {
   }
   const rows = Object.entries(yearly).sort(([a],[b]) => b.localeCompare(a));
   if (!rows.length) return '';
+  const dc = state.displayCurrency || 'USD';
   return `
     <div class="detail-card">
       <div class="detail-card-title">📅 ${t('yearly_summary_title')}</div>
       ${rows.map(([yr, total]) => `
         <div class="detail-row">
           <span class="detail-label" style="font-weight:700">${yr}</span>
-          <span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(total), 'USD')}</span>
+          <span class="detail-value" style="color:var(--success)">${fmtCurrency(Math.round(total), dc)}</span>
         </div>`).join('')}
       <div class="detail-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
         <span class="detail-label" style="color:var(--muted)">${t('annual_avg')}</span>
-        <span class="detail-value" style="color:var(--accent)">${fmtCurrency(Math.round(rows.reduce((s,[,v])=>s+v,0)/rows.length), 'USD')}</span>
+        <span class="detail-value" style="color:var(--accent)">${fmtCurrency(Math.round(rows.reduce((s,[,v])=>s+v,0)/rows.length), dc)}</span>
       </div>
     </div>`;
 }
@@ -2307,7 +2315,7 @@ function renderRentIncomeChart(countries) {
       </svg>
       <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted)">
         <span>${recent[0][0]}</span>
-        <span style="color:var(--success);font-weight:800">${t('total_amount')} $${Math.round(totalUSD).toLocaleString()}</span>
+        <span style="color:var(--success);font-weight:800">${t('total_amount')} ${fmtCurrency(Math.round(totalUSD), state.displayCurrency || 'USD')}</span>
         <span>${recent[recent.length-1][0]}</span>
       </div>
     </div>`;
@@ -2703,18 +2711,19 @@ function renderTotalReturn(countries) {
   const roi = totalInvested > 0 ? (netReturn / totalInvested * 100).toFixed(1) : null;
   const gainPos = capitalGain >= 0;
   const netPos  = netReturn >= 0;
+  const dc = state.displayCurrency || 'USD';
   return `
     <div class="detail-card" style="position:relative;overflow:hidden">
       <div style="position:absolute;top:0;left:0;right:0;height:2.5px;background:${netPos ? 'var(--gradient-success)' : 'var(--gradient-danger)'}"></div>
       <div class="detail-card-title" style="margin-top:6px">🏆 ${t('total_return_title')}</div>
-      <div class="detail-row"><span class="detail-label">${t('total_invested_stat')}</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(totalInvested), 'USD')}</span></div>
-      <div class="detail-row"><span class="detail-label">${t('current_value')}</span><span class="detail-value">${fmtCurrency(Math.round(totalCurrent), 'USD')}</span></div>
-      <div class="detail-row"><span class="detail-label">${t('paper_gain')}</span><span class="detail-value" style="color:${gainPos?'var(--success)':'var(--danger)'}">${gainPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(capitalGain)), 'USD')}</span></div>
-      ${totalRentRec ? `<div class="detail-row"><span class="detail-label">${t('rent_received_total')}</span><span class="detail-value" style="color:var(--success)">+${fmtCurrency(Math.round(totalRentRec), 'USD')}</span></div>` : ''}
-      ${totalExp ? `<div class="detail-row"><span class="detail-label">${t('total_expenses')}</span><span class="detail-value" style="color:var(--danger)">−${fmtCurrency(Math.round(totalExp), 'USD')}</span></div>` : ''}
+      <div class="detail-row"><span class="detail-label">${t('total_invested_stat')}</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(totalInvested), dc)}</span></div>
+      <div class="detail-row"><span class="detail-label">${t('current_value')}</span><span class="detail-value">${fmtCurrency(Math.round(totalCurrent), dc)}</span></div>
+      <div class="detail-row"><span class="detail-label">${t('paper_gain')}</span><span class="detail-value" style="color:${gainPos?'var(--success)':'var(--danger)'}">${gainPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(capitalGain)), dc)}</span></div>
+      ${totalRentRec ? `<div class="detail-row"><span class="detail-label">${t('rent_received_total')}</span><span class="detail-value" style="color:var(--success)">+${fmtCurrency(Math.round(totalRentRec), dc)}</span></div>` : ''}
+      ${totalExp ? `<div class="detail-row"><span class="detail-label">${t('total_expenses')}</span><span class="detail-value" style="color:var(--danger)">−${fmtCurrency(Math.round(totalExp), dc)}</span></div>` : ''}
       <div class="detail-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
         <span class="detail-label" style="font-weight:800">${t('net_total_return')}</span>
-        <span class="detail-value" style="font-weight:800;color:${netPos?'var(--success)':'var(--danger)'};font-size:1.08rem">${netPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(netReturn)), 'USD')}${roi ? ` (${roi}%)` : ''}</span>
+        <span class="detail-value" style="font-weight:800;color:${netPos?'var(--success)':'var(--danger)'};font-size:1.08rem">${netPos?'+':'−'}${fmtCurrency(Math.abs(Math.round(netReturn)), dc)}${roi ? ` (${roi}%)` : ''}</span>
       </div>
     </div>`;
 }
