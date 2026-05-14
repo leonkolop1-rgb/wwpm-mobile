@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 82;
+const APP_VERSION = 83;
 
 const CHANGELOG = {
+  83: 'ריבוע עליית שווי — רואים בכמה עלה הנכס מאז הרכישה עם אחוז',
   82: 'כפתור פירוט שווי זהב — מקשר מהדף הראשי לאנליטיקה',
   81: 'בדיקת פופ-אפ עדכון — האם הפופ-אפ הורוד נראה טוב?',
   80: 'פופ-אפ עדכון ורוד — מתריע על גרסה חדשה עם כפתור עדכן עכשיו',
@@ -214,6 +215,7 @@ const STRINGS = {
     current_value: 'שווי נוכחי',
     purchase_price: 'מחיר רכישה',
     monthly_rent: 'שכירות חודשית',
+    value_gain: 'עליית שווי',
     ownership: 'בעלות',
     status_rented: 'מושכר', status_owned: 'בבעלות',
     status_for_sale: 'למכירה', status_empty: 'ריק',
@@ -406,6 +408,7 @@ const STRINGS = {
     current_value: 'Current Value',
     purchase_price: 'Purchase Price',
     monthly_rent: 'Monthly Rent',
+    value_gain: 'Value Gain',
     ownership: 'Ownership',
     status_rented: 'Rented', status_owned: 'Owned',
     status_for_sale: 'For Sale', status_empty: 'Empty',
@@ -598,6 +601,7 @@ const STRINGS = {
     current_value: 'Текущая стоимость',
     purchase_price: 'Цена покупки',
     monthly_rent: 'Аренда в месяц',
+    value_gain: 'Рост стоимости',
     ownership: 'Владение',
     status_rented: 'Арендуется', status_owned: 'Владение',
     status_for_sale: 'На продажу', status_empty: 'Пусто',
@@ -1595,6 +1599,17 @@ function renderProperty() {
           </div>
           ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
+          ${(p.currentValue && p.purchasePrice) ? (() => {
+            const gain = p.currentValue - p.purchasePrice;
+            const gainPct = Math.round((gain / p.purchasePrice) * 100);
+            const col = gain >= 0 ? 'var(--success)' : 'var(--danger)';
+            const sign = gain >= 0 ? '+' : '';
+            return `<div class="value-tile">
+              <div class="value-tile-label">${t('value_gain')}</div>
+              <div class="value-tile-num" style="color:${col}">${sign}${fmtCurrency(Math.round(Math.abs(gain)), currency)}</div>
+              <div style="font-size:0.73rem;color:${col};font-weight:700;margin-top:3px">${sign}${gainPct}%</div>
+            </div>`;
+          })() : ''}
           ${totalMonthlyMortgage ? `<div class="value-tile"><div class="value-tile-label">${t('mortgage_month')}</div><div class="value-tile-num" style="color:var(--warning)">${fmtCurrency(Math.round(totalMonthlyMortgage), currency)}</div></div>` : ''}
         </div>
 
