@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 73;
+const APP_VERSION = 74;
 
 const CHANGELOG = {
+  74: 'תנאי שימוש בהרשמה — חובה לאשר לפני יצירת חשבון',
   73: 'פילטר מדינה באנליטיקה — צפייה בנתונים לפי מדינה ספציפית',
   72: 'כרטיס גוגל מפות — חלונית בולטת עם כפתור ניווט בדף הדירה',
   71: 'אינטגרציה עם גוגל מפות — כפתור פתח במפות בדף הדירה',
@@ -350,6 +351,8 @@ const STRINGS = {
     err_invalid_email: 'כתובת אימייל לא תקינה',
     err_password_short: 'סיסמה חייבת להיות לפחות 4 תווים',
     err_username_taken: 'שם המשתמש כבר תפוס',
+    terms_agree: 'אני מסכים/ה לתנאי השימוש של האפליקציה',
+    err_terms: 'יש לאשר את תנאי השימוש לפני ההרשמה',
     welcome_new: 'ברוך הבא,', creating_account: 'יוצר חשבון...',
     // Feedback
     feedback_btn: 'פידבק', feedback_title: 'שלחו לנו פידבק',
@@ -537,6 +540,8 @@ const STRINGS = {
     err_invalid_email: 'Invalid email address',
     err_password_short: 'Password must be at least 4 characters',
     err_username_taken: 'Username already taken',
+    terms_agree: 'I agree to the Terms of Use of the app',
+    err_terms: 'You must agree to the Terms of Use before registering',
     welcome_new: 'Welcome,', creating_account: 'Creating account...',
     // Feedback
     feedback_btn: 'Feedback', feedback_title: 'Send us Feedback',
@@ -724,6 +729,8 @@ const STRINGS = {
     err_invalid_email: 'Неверный email',
     err_password_short: 'Пароль минимум 4 символа',
     err_username_taken: 'Имя пользователя занято',
+    terms_agree: 'Я принимаю Условия использования приложения',
+    err_terms: 'Необходимо принять Условия использования перед регистрацией',
     welcome_new: 'Добро пожаловать,', creating_account: 'Создание аккаунта...',
     // Feedback
     feedback_btn: 'Фидбэк', feedback_title: 'Отправьте нам фидбэк',
@@ -1017,6 +1024,10 @@ function renderLogin() {
             <label>${t('password')}</label>
             <input type="password" id="reg-password" autocomplete="new-password" placeholder="${t('password')}">
           </div>
+          <label class="terms-checkbox-label">
+            <input type="checkbox" id="reg-terms">
+            <span>${t('terms_agree')}</span>
+          </label>
           ${state.error ? `<div class="login-error">${esc(state.error)}</div>` : ''}
           <button type="submit" class="btn-primary" ${state.loading ? 'disabled' : ''}>
             ${state.loading ? t('creating_account') : t('register_btn')}
@@ -2928,9 +2939,11 @@ async function doRegister(e) {
   const username = document.getElementById('reg-username').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
+  const termsChecked = document.getElementById('reg-terms')?.checked;
   if (!username || !email || !password) { state.error = t('err_required'); render(); return; }
   if (!email.includes('@') || !email.includes('.')) { state.error = t('err_invalid_email'); render(); return; }
   if (password.length < 4) { state.error = t('err_password_short'); render(); return; }
+  if (!termsChecked) { state.error = t('err_terms'); render(); return; }
   state.loading = true; state.error = null; render();
   try {
     const existing = await sb.select('users', `username=eq.${encodeURIComponent(username)}&select=username`, true);

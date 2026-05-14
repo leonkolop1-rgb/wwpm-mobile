@@ -367,6 +367,47 @@ body::after {
 }
 .form-group textarea { resize: none; direction: rtl; font-family: inherit; }
 
+.terms-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text2);
+  line-height: 1.4;
+  padding: 2px 0;
+}
+.terms-checkbox-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(99,102,241,0.5);
+  border-radius: 5px;
+  background: rgba(99,102,241,0.08);
+  cursor: pointer;
+  margin-top: 1px;
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+}
+.terms-checkbox-label input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.terms-checkbox-label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
 .login-error {
   background: var(--danger-dim);
   border: 1px solid rgba(239,68,68,0.25);
