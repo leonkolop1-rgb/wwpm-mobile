@@ -3149,6 +3149,12 @@ async function sharePDF() {
   const content = document.querySelector('.content');
   if (!content) return;
 
+  // Libraries not yet loaded from CDN — fall back to print dialog
+  if (typeof html2canvas === 'undefined' || !window.jspdf) {
+    window.print();
+    return;
+  }
+
   toast('⏳ ' + t('generating_pdf'));
 
   const page      = document.querySelector('.page');
@@ -3169,15 +3175,18 @@ async function sharePDF() {
 
   try {
     const canvas = await html2canvas(content, {
-      scale: 2,
+      scale: 1.5,              // lower than 2 to stay within iOS canvas memory limits
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,       // keep false — allowTaint taints the canvas, blocking toDataURL
       backgroundColor: '#0f0f14',
+      foreignObjectRendering: false,  // more compatible with iOS WebKit
+      imageTimeout: 15000,
+      logging: false,
       scrollX: 0,
       scrollY: 0,
     });
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.88);
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -3200,7 +3209,10 @@ async function sharePDF() {
     const blob = pdf.output('blob');
     const blobUrl = URL.createObjectURL(blob);
 
-    // Try Web Share API with file (iOS 15+ Safari)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // Try Web Share API with file (iOS 15+, Android Chrome 89+)
     const file = new File([blob], filename, { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
@@ -3209,15 +3221,10 @@ async function sharePDF() {
         return;
       } catch (shareErr) {
         if (shareErr.name === 'AbortError') { URL.revokeObjectURL(blobUrl); return; }
-        // fall through to window.open
       }
     }
 
-    // Fallback by platform:
-    // iOS → open in new tab (Safari PDF viewer has its own share button)
-    // Android / desktop → trigger download, then share from Files app
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // Fallback: iOS → open in Safari PDF viewer; Android/desktop → download
     if (isIOS) {
       window.open(blobUrl, '_blank');
     } else {
@@ -3228,8 +3235,9 @@ async function sharePDF() {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
 
   } catch (err) {
-    toast('❌ ' + t('pdf_error'));
-    console.error('PDF:', err);
+    // Show actual error for easier debugging
+    toast('❌ ' + (err.message || t('pdf_error')));
+    console.error('PDF error:', err);
   } finally {
     if (page) { page.style.height = prev.pageH; page.style.overflow = prev.pageOv; }
     content.style.height = prev.contH;
