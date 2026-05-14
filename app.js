@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 72;
+const APP_VERSION = 73;
 
 const CHANGELOG = {
+  73: 'פילטר מדינה באנליטיקה — צפייה בנתונים לפי מדינה ספציפית',
   72: 'כרטיס גוגל מפות — חלונית בולטת עם כפתור ניווט בדף הדירה',
   71: 'אינטגרציה עם גוגל מפות — כפתור פתח במפות בדף הדירה',
   70: 'מטבע מלא בכל עמוד + בחירת שפה בכל עמוד',
@@ -166,6 +167,7 @@ const state = {
   viewOwner: null,
   sortProps: 'default',
   searchQuery: '',
+  analyticsCountry: null,
   adminUsers: null,
   rentMonthSel: [],
 };
@@ -272,7 +274,7 @@ const STRINGS = {
     // Analytics
     analytics_header: 'אנליטיקה', total_summary: 'סיכום כולל',
     props_in: 'נכסים ב-', countries_count_label: 'מדינות',
-    by_country: 'לפי מדינה', props_by_value: 'נכסים לפי שווי',
+    by_country: 'לפי מדינה', props_by_value: 'נכסים לפי שווי', all_countries_filter: 'כל המדינות',
     current_assets_value: 'שווי נכסים כיום', total_invested_label: 'סך ההשקעה',
     rent_per_month_label: 'שכירות/חודש', mortgage_per_month_label: 'משכנתא/חודש',
     net_cashflow_label: 'תזרים נטו/חודש', gross_yield_label: 'תשואה ברוטו',
@@ -459,7 +461,7 @@ const STRINGS = {
     // Analytics
     analytics_header: 'Analytics', total_summary: 'Total summary',
     props_in: 'properties in', countries_count_label: 'countries',
-    by_country: 'By country', props_by_value: 'Properties by value',
+    by_country: 'By country', props_by_value: 'Properties by value', all_countries_filter: 'All countries',
     current_assets_value: 'Current assets value', total_invested_label: 'Total invested',
     rent_per_month_label: 'Rent/month', mortgage_per_month_label: 'Mortgage/month',
     net_cashflow_label: 'Net cash flow/month', gross_yield_label: 'Gross yield',
@@ -646,7 +648,7 @@ const STRINGS = {
     // Analytics
     analytics_header: 'Аналитика', total_summary: 'Общий итог',
     props_in: 'объектов в', countries_count_label: 'странах',
-    by_country: 'По странам', props_by_value: 'Объекты по стоимости',
+    by_country: 'По странам', props_by_value: 'Объекты по стоимости', all_countries_filter: 'Все страны',
     current_assets_value: 'Текущая стоимость', total_invested_label: 'Всего инвестировано',
     rent_per_month_label: 'Аренда/мес', mortgage_per_month_label: 'Ипотека/мес',
     net_cashflow_label: 'Чистый поток/мес', gross_yield_label: 'Валовая доходность',
@@ -1984,8 +1986,16 @@ function renderRentHistory() {
     </div>`;
 }
 
+function setAnalyticsCountry(id) {
+  state.analyticsCountry = id || null;
+  render();
+}
+
 function renderAnalytics() {
-  const countries = state.data?.countries || [];
+  const allCountries = state.data?.countries || [];
+  const countries = state.analyticsCountry
+    ? allCountries.filter(c => c.id === state.analyticsCountry)
+    : allCountries;
   const allProps  = countries.flatMap(c => (c.properties || []).map(p => ({ ...p, _country: c.name, _currency: c.currency || 'USD' })));
 
   const today = new Date();
@@ -2024,6 +2034,12 @@ function renderAnalytics() {
       </header>
       <div class="content">
         ${renderRateBar()}
+
+        <!-- Country filter -->
+        <select class="analytics-country-filter" onchange="setAnalyticsCountry(this.value)">
+          <option value="">${t('all_countries_filter')} (${allCountries.length})</option>
+          ${allCountries.map(c => `<option value="${esc(c.id)}" ${state.analyticsCountry === c.id ? 'selected' : ''}>${esc(c.name)} (${(c.properties||[]).length})</option>`).join('')}
+        </select>
 
         <!-- Summary -->
         <div class="section-label">${t('total_summary')} — ${allProps.length} ${t('props_in')} ${countries.length} ${t('countries_count_label')}</div>
