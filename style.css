@@ -702,6 +702,28 @@ body::after {
   line-height: 1;
   text-shadow: 0 0 40px rgba(130,140,255,0.8), 0 0 80px rgba(99,102,241,0.5);
 }
+.portfolio-details-btn {
+  background: linear-gradient(135deg, #b8860b 0%, #f5c842 50%, #d4a017 100%);
+  border: none;
+  border-radius: 20px;
+  color: #1a1000;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 7px 14px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 12px rgba(212,160,23,0.45), 0 1px 4px rgba(0,0,0,0.3);
+  position: relative; z-index: 1;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.portfolio-details-btn:active {
+  transform: scale(0.94);
+  box-shadow: 0 1px 6px rgba(212,160,23,0.3);
+}
+
 .portfolio-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 81;
+const APP_VERSION = 82;
 
 const CHANGELOG = {
+  82: 'כפתור פירוט שווי זהב — מקשר מהדף הראשי לאנליטיקה',
   81: 'בדיקת פופ-אפ עדכון — האם הפופ-אפ הורוד נראה טוב?',
   80: 'פופ-אפ עדכון ורוד — מתריע על גרסה חדשה עם כפתור עדכן עכשיו',
   79: 'שיתוף PDF תוקן — עובד על iOS ואנדרואיד דרך תפריט הדפסה',
@@ -2448,7 +2449,10 @@ function renderPortfolioSummary(countries) {
   return `
     <div class="portfolio-card">
       <div class="portfolio-total-label">${t('portfolio_value')} (${dc})</div>
-      <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
+        <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
+        <button class="portfolio-details-btn" onclick="goToAnalytics()">פירוט שווי</button>
+      </div>
       <div class="portfolio-stats">
         <div class="portfolio-stat"><div class="portfolio-stat-label">${t('monthly_rent_label')} (${curMonthHeb})</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
         <div class="portfolio-stat"><div class="portfolio-stat-label">${t('mortgages_label')}</div><div class="portfolio-stat-num" style="color:rgba(245,158,11,0.95)">${totalMortgUSD ? fmtCurrency(totalMortgUSD, dc) : '—'}</div></div>
