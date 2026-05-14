@@ -518,10 +518,10 @@ body::after {
 /* ===== CONTENT ===== */
 .content {
   flex: 1;
-  padding: 12px 13px 28px;
+  padding: 16px 15px 36px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 12px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -529,7 +529,7 @@ body::after {
 /* ===== PORTFOLIO HERO — animated gradient ===== */
 .portfolio-card {
   border-radius: 22px;
-  padding: 24px 20px 20px;
+  padding: 28px 22px 22px;
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(99,102,241,0.3);
@@ -581,12 +581,12 @@ body::after {
   color: rgba(255,255,255,0.45);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   position: relative; z-index: 1;
 }
 .portfolio-total-num {
   font-family: var(--font-num);
-  font-size: 2.8rem;
+  font-size: 3rem;
   font-weight: 800;
   color: white;
   direction: ltr;
@@ -600,13 +600,13 @@ body::after {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  margin-top: 16px;
+  margin-top: 20px;
   position: relative; z-index: 1;
   border-top: 1px solid rgba(255,255,255,0.08);
-  padding-top: 14px;
+  padding-top: 16px;
 }
 .portfolio-stat {
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   border-left: 1px solid rgba(255,255,255,0.06);
 }
@@ -618,14 +618,14 @@ body::after {
   color: rgba(255,255,255,0.42);
   font-weight: 600;
   letter-spacing: 0.03em;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .portfolio-stat-num {
   font-family: var(--font-num);
-  font-size: 0.92rem;
+  font-size: 0.96rem;
   font-weight: 800;
   color: rgba(255,255,255,0.92);
   direction: ltr;
@@ -640,10 +640,10 @@ body::after {
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(99,102,241,0.16);
   border-radius: var(--radius);
-  padding: 14px 14px 12px;
+  padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -680,7 +680,7 @@ body::after {
 .cc-main {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 14px;
 }
 .cc-chevron {
   font-size: 1.05rem;
@@ -691,31 +691,31 @@ body::after {
 }
 .cc-stats {
   display: flex;
-  border-top: 1px solid rgba(99,102,241,0.09);
-  padding-top: 9px;
-  margin-top: 1px;
+  border-top: 1px solid rgba(99,102,241,0.1);
+  padding-top: 12px;
+  margin-top: 0;
 }
 .cc-stat {
   flex: 1;
   text-align: center;
-  padding: 0 6px;
+  padding: 0 8px;
   border-inline-end: 1px solid rgba(99,102,241,0.08);
 }
 .cc-stat:last-child { border-inline-end: none; }
 .cc-stat-label {
-  font-size: 0.58rem;
+  font-size: 0.59rem;
   color: var(--muted);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cc-stat-val {
   font-family: var(--font-num);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 800;
   direction: ltr;
   font-feature-settings: 'tnum';
@@ -724,8 +724,8 @@ body::after {
 }
 
 .country-flag {
-  font-size: 2.2rem;
-  width: 54px; height: 54px;
+  font-size: 2.3rem;
+  width: 56px; height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -738,7 +738,7 @@ body::after {
   transition: transform 0.15s;
 }
 .country-flag-img {
-  width: 54px; height: 54px;
+  width: 56px; height: 56px;
   object-fit: cover;
   border-radius: 16px;
   flex-shrink: 0;
@@ -759,8 +759,8 @@ body::after {
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 .country-info { flex: 1; min-width: 0; }
-.country-name { font-size: 0.98rem; font-weight: 800; margin-bottom: 3px; letter-spacing: -0.02em; }
-.country-sub { font-size: 0.74rem; color: var(--muted); }
+.country-name { font-size: 1rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.02em; }
+.country-sub { font-size: 0.76rem; color: var(--muted); }
 .chevron { font-size: 1rem; color: var(--muted); opacity: 0.4; }
 
 /* ===== EMPTY STATE ===== */
@@ -847,7 +847,7 @@ body::after {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  padding: 6px 2px 2px;
+  padding: 10px 2px 4px;
 }
 
 /* ===== PROPERTY CARD — glass ===== */
