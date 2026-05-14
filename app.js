@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 74;
+const APP_VERSION = 75;
 
 const CHANGELOG = {
+  75: 'דרופ דאון מדינות בדף הראשי — ניווט מהיר למדינה ספציפית',
   74: 'תנאי שימוש בהרשמה — חובה לאשר לפני יצירת חשבון',
   73: 'פילטר מדינה באנליטיקה — צפייה בנתונים לפי מדינה ספציפית',
   72: 'כרטיס גוגל מפות — חלונית בולטת עם כפתור ניווט בדף הדירה',
@@ -214,7 +215,7 @@ const STRINGS = {
     share_title: 'שתף', analytics_title: 'אנליטיקה', admin_title: 'ניהול',
     countries_section: 'מדינות', view_only_banner: 'מצב צפייה — נתונים של',
     // Search & Sort
-    search_country: 'חיפוש מדינה...', search_property: 'חיפוש נכס...',
+    select_country: 'בחר מדינה...', search_property: 'חיפוש נכס...',
     sort_default: 'ברירת מחדל', sort_value_desc: 'שווי ↓', sort_value_asc: 'שווי ↑',
     sort_rent_desc: 'שכ"ד ↓', sort_status: 'סטטוס',
     // Country modal
@@ -404,7 +405,7 @@ const STRINGS = {
     share_title: 'Share', analytics_title: 'Analytics', admin_title: 'Admin',
     countries_section: 'Countries', view_only_banner: 'View mode — data of',
     // Search & Sort
-    search_country: 'Search country...', search_property: 'Search property...',
+    select_country: 'Select country...', search_property: 'Search property...',
     sort_default: 'Default', sort_value_desc: 'Value ↓', sort_value_asc: 'Value ↑',
     sort_rent_desc: 'Rent ↓', sort_status: 'Status',
     // Country modal
@@ -594,7 +595,7 @@ const STRINGS = {
     share_title: 'Поделиться', analytics_title: 'Аналитика', admin_title: 'Администрирование',
     countries_section: 'Страны', view_only_banner: 'Режим просмотра — данные',
     // Search & Sort
-    search_country: 'Поиск страны...', search_property: 'Поиск объекта...',
+    select_country: 'Выбрать страну...', search_property: 'Поиск объекта...',
     sort_default: 'По умолчанию', sort_value_desc: 'Стоимость ↓', sort_value_asc: 'Стоимость ↑',
     sort_rent_desc: 'Аренда ↓', sort_status: 'Статус',
     // Country modal
@@ -1104,7 +1105,7 @@ function renderHome() {
         ${renderRateBar()}
         ${countries.length === 0
           ? `<div class="empty-state"><div class="empty-icon">🌍</div><div class="empty-text">${t('no_countries')}</div></div>`
-          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">${t('countries_section')}</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" type="search" placeholder="${t('search_country')}" oninput="doSearch(this.value)" /></div>${countries.map(renderCountryCard).join('')}`
+          : `${renderPortfolioSummary(countries)}${renderAlerts(countries)}<div class="section-label">${t('countries_section')}</div><select class="analytics-country-filter" onchange="if(this.value)goToCountry(this.value)"><option value="">${t('select_country')}</option>${countries.map(c=>`<option value="${esc(c.id)}">${esc(c.name)} (${(c.properties||[]).length})</option>`).join('')}</select>${countries.map(renderCountryCard).join('')}`
         }
       </div>
       <div class="bottom-bar">
