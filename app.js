@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 83;
+const APP_VERSION = 84;
 
 const CHANGELOG = {
+  84: 'הערות בעדכון שווי — הוסף הערה לכל עדכון, כפתור i לצפייה בהיסטוריה',
   83: 'ריבוע עליית שווי — רואים בכמה עלה הנכס מאז הרכישה עם אחוז',
   82: 'כפתור פירוט שווי זהב — מקשר מהדף הראשי לאנליטיקה',
   81: 'בדיקת פופ-אפ עדכון — האם הפופ-אפ הורוד נראה טוב?',
@@ -348,6 +349,8 @@ const STRINGS = {
     tenant_details_section: 'פרטי שוכר', ownership_pct: 'אחוז בעלות (%)',
     full_name_ph: 'שם מלא', eval_date: 'תאריך הערכה',
     update_value_title: 'עדכון שווי נכס',
+    value_notes: 'הערות', value_notes_ph: 'הערה על הערכת שווי זו...',
+    value_history_title: 'היסטוריית שווי', value_history_empty: 'אין היסטוריית שווי',
     // Currency options
     ils_opt: '₪ שקל (ILS)', usd_opt: '$ דולר (USD)', eur_opt: '€ יורו (EUR)',
     gbp_opt: '£ פאונד (GBP)', gel_opt: '₾ לארי (GEL)', aed_opt: 'د.إ דירהם (AED)',
@@ -541,6 +544,8 @@ const STRINGS = {
     tenant_details_section: 'Tenant details', ownership_pct: 'Ownership (%)',
     full_name_ph: 'Full name', eval_date: 'Valuation date',
     update_value_title: 'Update Property Value',
+    value_notes: 'Notes', value_notes_ph: 'Note about this valuation...',
+    value_history_title: 'Value History', value_history_empty: 'No value history',
     // Currency options
     ils_opt: '₪ Shekel (ILS)', usd_opt: '$ Dollar (USD)', eur_opt: '€ Euro (EUR)',
     gbp_opt: '£ Pound (GBP)', gel_opt: '₾ Lari (GEL)', aed_opt: 'د.إ Dirham (AED)',
@@ -734,6 +739,8 @@ const STRINGS = {
     tenant_details_section: 'Данные жильца', ownership_pct: 'Доля владения (%)',
     full_name_ph: 'Полное имя', eval_date: 'Дата оценки',
     update_value_title: 'Обновить стоимость',
+    value_notes: 'Заметки', value_notes_ph: 'Заметка об этой оценке...',
+    value_history_title: 'История стоимости', value_history_empty: 'Нет истории стоимости',
     // Currency options
     ils_opt: '₪ Шекель (ILS)', usd_opt: '$ Доллар (USD)', eur_opt: '€ Евро (EUR)',
     gbp_opt: '£ Фунт (GBP)', gel_opt: '₾ Лари (GEL)', aed_opt: 'د.إ Дирхам (AED)',
@@ -1596,6 +1603,7 @@ function renderProperty() {
           <div class="value-tile" onclick="showModal('update-val-modal')" style="cursor:pointer;position:relative">
             <div class="value-tile-label">${t('current_value')} ✏️</div>
             <div class="value-tile-num">${p.currentValue ? fmtCurrency(Math.round(p.currentValue), currency) : '—'}</div>
+            ${(p.valueHistory?.length) ? `<button class="val-i-btn" onclick="event.stopPropagation();showModal('val-history-modal')" title="${t('value_history_title')}">i</button>` : ''}
           </div>
           ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
@@ -1748,10 +1756,34 @@ function renderProperty() {
           <label>${t('eval_date')}</label>
           <input type="date" id="uv-date" value="${new Date().toISOString().slice(0,10)}" />
         </div>
+        <div class="form-group">
+          <label>${t('value_notes')}</label>
+          <textarea id="uv-notes" class="form-textarea" rows="3" placeholder="${t('value_notes_ph')}"></textarea>
+        </div>
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('update-val-modal')">${t('cancel')}</button>
           <button class="btn-primary" style="flex:2" onclick="submitUpdateValue('${esc(currency)}')">${t('save')}</button>
         </div>
+      </div>
+    </div>
+
+    <div id="val-history-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('val-history-modal')">
+      <div class="modal-card" style="max-height:80dvh;overflow-y:auto">
+        <div class="modal-title">📋 ${t('value_history_title')}</div>
+        ${(() => {
+          const hist = [...(p.valueHistory || [])].filter(h => h.date && h.value)
+            .sort((a, b) => b.date.localeCompare(a.date));
+          if (!hist.length) return `<div style="color:var(--muted);text-align:center;padding:16px">${t('value_history_empty')}</div>`;
+          return hist.map(h => `
+            <div style="border-bottom:1px solid var(--border);padding:12px 0;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:0.78rem;color:var(--muted)">${h.date}</span>
+                <span style="font-size:1rem;font-weight:700;color:var(--accent-light)">${fmtCurrency(Math.round(h.value), currency)}</span>
+              </div>
+              ${h.note ? `<div style="font-size:0.8rem;color:var(--text2);line-height:1.4;padding:6px 10px;background:rgba(99,102,241,0.07);border-radius:8px;border-right:2px solid var(--accent)">${esc(h.note)}</div>` : ''}
+            </div>`).join('');
+        })()}
+        <button class="btn-secondary" style="width:100%;margin-top:12px" onclick="closeModal('val-history-modal')">${t('cancel')}</button>
       </div>
     </div>
 
@@ -3338,7 +3370,8 @@ async function submitUpdateValue(currency) {
   const rate = rates[currency] || 1;
   p.currentValue = val / rate;
   if (!p.valueHistory) p.valueHistory = [];
-  p.valueHistory.push({ id: uid(), date: date || new Date().toISOString().slice(0,10), value: p.currentValue });
+  const note = (document.getElementById('uv-notes')?.value || '').trim();
+  p.valueHistory.push({ id: uid(), date: date || new Date().toISOString().slice(0,10), value: p.currentValue, ...(note && { note }) });
   closeModal('update-val-modal');
   toast(t('saving'));
   await saveData();
