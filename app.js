@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 86;
+const APP_VERSION = 87;
 
 const CHANGELOG = {
+  87: 'חלון פירוט שווי כסוף — טבלת נכסים עם מחיר רכישה, שווי נוכחי ורווח',
   86: 'תיקון פופ-אפ עדכון — מציג מה חדש בגרסה הנכונה אחרי העדכון',
   85: 'תרגום כפתור פירוט שווי + אישור יציאה — שואל לפני יציאה מהאפליקציה',
   84: 'הערות בעדכון שווי — הוסף הערה לכל עדכון, כפתור i לצפייה בהיסטוריה',
@@ -2503,7 +2504,7 @@ function renderPortfolioSummary(countries) {
       <div class="portfolio-total-label">${t('portfolio_value')} (${dc})</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
         <div class="portfolio-total-num">${fmtCurrency(totalValueUSD, dc)}</div>
-        <button class="portfolio-details-btn" onclick="goToAnalytics()">${t('portfolio_details')}</button>
+        <button class="portfolio-details-btn" onclick="showValueBreakdown()">${t('portfolio_details')}</button>
       </div>
       <div class="portfolio-stats">
         <div class="portfolio-stat"><div class="portfolio-stat-label">${t('monthly_rent_label')} (${curMonthHeb})</div><div class="portfolio-stat-num" style="color:rgba(16,185,129,0.95)">${fmtCurrency(totalRentUSD, dc)}</div></div>
@@ -3669,6 +3670,121 @@ function goToAnalytics() {
   state.view = 'analytics';
   render();
   window.scrollTo(0, 0);
+}
+
+function showValueBreakdown() {
+  if (document.getElementById('_value-breakdown')) return;
+  const dc = state.displayCurrency || 'USD';
+  const countries = state.data?.countries || [];
+  const rows = countries.flatMap(c =>
+    (c.properties || []).map(p => ({
+      name: p.name || p.city || p.address || '—',
+      country: c.name || '',
+      purchase: p.purchasePrice || 0,
+      current: p.currentValue || 0,
+    }))
+  ).filter(r => r.purchase > 0 || r.current > 0);
+
+  const totalPurchase = rows.reduce((s, r) => s + r.purchase, 0);
+  const totalCurrent  = rows.reduce((s, r) => s + r.current, 0);
+  const totalGain     = totalCurrent - totalPurchase;
+  const totalPct      = totalPurchase > 0 ? ((totalGain / totalPurchase) * 100).toFixed(1) : '—';
+
+  const rowsHtml = rows.map(r => {
+    const gain = r.current - r.purchase;
+    const pct  = r.purchase > 0 ? ((gain / r.purchase) * 100).toFixed(1) : null;
+    const pos  = gain >= 0;
+    return `
+      <tr>
+        <td style="padding:10px 8px;font-size:0.82rem;font-weight:600;color:#e8e8f8;border-bottom:1px solid rgba(180,180,220,0.1)">${esc(r.name)}<br><span style="font-size:0.68rem;color:rgba(180,180,220,0.5);font-weight:400">${esc(r.country)}</span></td>
+        <td style="padding:10px 8px;text-align:center;font-size:0.8rem;color:rgba(180,180,220,0.75);border-bottom:1px solid rgba(180,180,220,0.1)">${r.purchase ? fmtCurrency(r.purchase, dc) : '—'}</td>
+        <td style="padding:10px 8px;text-align:center;font-size:0.8rem;color:#c8d8f8;font-weight:700;border-bottom:1px solid rgba(180,180,220,0.1)">${r.current ? fmtCurrency(r.current, dc) : '—'}</td>
+        <td style="padding:10px 8px;text-align:center;border-bottom:1px solid rgba(180,180,220,0.1)">
+          <span style="font-size:0.8rem;font-weight:700;color:${pos ? '#4ade80' : '#f87171'}">${pos ? '+' : '−'}${fmtCurrency(Math.abs(gain), dc)}</span>
+          ${pct !== null ? `<br><span style="font-size:0.7rem;color:${pos ? '#86efac' : '#fca5a5'}">${pos ? '+' : '−'}${Math.abs(parseFloat(pct))}%</span>` : ''}
+        </td>
+      </tr>`;
+  }).join('');
+
+  const totalPos = totalGain >= 0;
+
+  const overlay = document.createElement('div');
+  overlay.id = '_value-breakdown';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.65)',
+    backdropFilter: 'blur(8px)',
+    zIndex: '10000',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px 16px',
+    opacity: '0', transition: 'opacity 0.22s ease',
+  });
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="
+      background: linear-gradient(160deg, #1c1c2e 0%, #252538 40%, #1e1e30 70%, #161622 100%);
+      border: 1.5px solid rgba(192,200,240,0.25);
+      border-radius: 24px;
+      padding: 24px 20px 20px;
+      width: 100%; max-width: 460px;
+      max-height: 85dvh; overflow-y: auto;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset,
+                  0 8px 48px rgba(0,0,0,0.6),
+                  0 0 60px rgba(160,160,220,0.08);
+      transform: scale(0.94);
+      transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+      direction: rtl;
+    " id="_vb-card">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="
+          font-size:1.15rem;font-weight:800;letter-spacing:0.02em;
+          background: linear-gradient(90deg, #a0a8c8, #d8dff0, #b8c0e0, #8890b8);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom:4px;
+        ">💎 ${t('portfolio_details')}</div>
+        <div style="font-size:0.72rem;color:rgba(160,170,210,0.5);letter-spacing:0.06em;text-transform:uppercase">${t('purchase_price')} · ${t('current_value')} · ${t('value_gain')}</div>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(192,200,240,0.2)">
+            <th style="padding:6px 8px 10px;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(160,175,220,0.6);text-align:right">נכס</th>
+            <th style="padding:6px 8px 10px;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(160,175,220,0.6);text-align:center">${t('purchase_price')}</th>
+            <th style="padding:6px 8px 10px;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(160,175,220,0.6);text-align:center">${t('current_value')}</th>
+            <th style="padding:6px 8px 10px;font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(160,175,220,0.6);text-align:center">${t('value_gain')}</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr style="border-top:1.5px solid rgba(192,200,240,0.25);background:rgba(160,170,220,0.05)">
+            <td style="padding:12px 8px;font-size:0.8rem;font-weight:800;color:#d0d8f8">סה"כ</td>
+            <td style="padding:12px 8px;text-align:center;font-size:0.8rem;color:rgba(180,190,230,0.8);font-weight:600">${totalPurchase ? fmtCurrency(totalPurchase, dc) : '—'}</td>
+            <td style="padding:12px 8px;text-align:center;font-size:0.8rem;color:#c8d8f8;font-weight:800">${totalCurrent ? fmtCurrency(totalCurrent, dc) : '—'}</td>
+            <td style="padding:12px 8px;text-align:center">
+              <span style="font-size:0.85rem;font-weight:800;color:${totalPos ? '#4ade80' : '#f87171'}">${totalPos ? '+' : '−'}${fmtCurrency(Math.abs(totalGain), dc)}</span>
+              ${totalPurchase > 0 ? `<br><span style="font-size:0.72rem;font-weight:700;color:${totalPos ? '#86efac' : '#fca5a5'}">${totalPos ? '+' : '−'}${Math.abs(parseFloat(totalPct))}%</span>` : ''}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <button onclick="document.getElementById('_value-breakdown').remove()" style="
+        width:100%;margin-top:18px;
+        background:rgba(160,170,220,0.12);
+        border:1px solid rgba(160,170,220,0.25);
+        border-radius:14px;padding:12px;
+        color:rgba(200,210,250,0.9);font-size:0.9rem;font-weight:700;
+        cursor:pointer;-webkit-tap-highlight-color:transparent;
+      ">${t('cancel')}</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    document.getElementById('_vb-card').style.transform = 'scale(1)';
+  });
 }
 
 // ===== HAPTIC =====
