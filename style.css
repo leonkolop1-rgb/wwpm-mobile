@@ -925,6 +925,32 @@ body::after {
 }
 .version-chip:active { opacity: 1; }
 
+.update-check-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  color: var(--text2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.update-check-btn:active { opacity: 0.75; }
+.update-check-btn.has-update {
+  background: rgba(236,72,153,0.15);
+  border-color: rgba(236,72,153,0.5);
+  color: #f472b6;
+  box-shadow: 0 0 12px rgba(236,72,153,0.25);
+  animation: pulse-pink 1.8s ease-in-out infinite;
+}
+@keyframes pulse-pink {
+  0%, 100% { box-shadow: 0 0 8px rgba(236,72,153,0.2); }
+  50%       { box-shadow: 0 0 18px rgba(236,72,153,0.5); }
+}
+
 .online-dot {
   width: 8px; height: 8px;
   flex-shrink: 0;

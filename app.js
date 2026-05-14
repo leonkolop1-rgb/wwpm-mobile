@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 77;
+const APP_VERSION = 78;
 
 const CHANGELOG = {
+  78: 'כפתור בדוק עדכונים — מציג גרסה חדשה זמינה בצבע ורוד',
   77: 'שיתוף PDF — שתף כל עמוד כקובץ PDF ישירות מהאפליקציה',
   76: 'פילטר מדינות בדף הראשי עם דגלים — בחר מדינה וראה רק אותה',
   75: 'דרופ דאון מדינות בדף הראשי — ניווט מהיר למדינה ספציפית',
@@ -173,6 +174,7 @@ const state = {
   searchQuery: '',
   analyticsCountry: null,
   homeCountryFilter: null,
+  updateAvailable: false,
   adminUsers: null,
   rentMonthSel: [],
 };
@@ -350,6 +352,7 @@ const STRINGS = {
     share_pdf: 'שתף PDF', generating_pdf: 'מייצר PDF...', pdf_error: 'שגיאה בייצור ה-PDF',
     confirm_delete_country: 'למחוק את', confirm_delete_country_props: 'נכסים יימחקו לצמיתות',
     checking_update: 'בודק עדכונים...', up_to_date: 'האפליקציה מעודכנת',
+    check_update_btn: 'בדוק עדכונים', new_version_btn: '✨ גרסה חדשה זמינה',
     // Registration
     register: 'הרשמה', register_btn: 'הירשם', registering: 'נרשם...',
     email: 'אימייל', email_ph: 'your@email.com',
@@ -541,6 +544,7 @@ const STRINGS = {
     share_pdf: 'Share PDF', generating_pdf: 'Generating PDF...', pdf_error: 'Error generating PDF',
     confirm_delete_country: 'Delete', confirm_delete_country_props: 'properties will be permanently deleted',
     checking_update: 'Checking for updates...', up_to_date: 'App is up to date',
+    check_update_btn: 'Check for updates', new_version_btn: '✨ New version available',
     // Registration
     register: 'Register', register_btn: 'Sign Up', registering: 'Creating account...',
     email: 'Email', email_ph: 'your@email.com',
@@ -732,6 +736,7 @@ const STRINGS = {
     share_pdf: 'Поделиться PDF', generating_pdf: 'Создание PDF...', pdf_error: 'Ошибка создания PDF',
     confirm_delete_country: 'Удалить', confirm_delete_country_props: 'объектов будет удалено',
     checking_update: 'Проверка обновлений...', up_to_date: 'Приложение обновлено',
+    check_update_btn: 'Проверить обновления', new_version_btn: '✨ Доступна новая версия',
     // Registration
     register: 'Регистрация', register_btn: 'Зарегистрироваться', registering: 'Регистрация...',
     email: 'Email', email_ph: 'your@email.com',
@@ -1134,7 +1139,9 @@ function renderHome() {
       <div class="bottom-bar">
         <span class="user-chip">👤 ${esc(state.viewOwner || state.currentUser)}</span>
         <span id="online-dot" class="online-dot" title="${t('connected')}"></span>
-        <button class="version-chip" onclick="forceUpdateCheck()" title="${t('checking_update')}">v${APP_VERSION}</button>
+        <button class="update-check-btn ${state.updateAvailable ? 'has-update' : ''}" onclick="forceUpdateCheck()">
+          ${state.updateAvailable ? t('new_version_btn') : t('check_update_btn')}
+        </button>
         <button class="logout-btn" onclick="doLogout()">${t('logout')}</button>
       </div>
     </div>
@@ -3674,15 +3681,18 @@ function applyUpdate() {
 }
 
 async function forceUpdateCheck() {
-  toast(t('checking_update'));
   if (!('serviceWorker' in navigator) || !_swReg) { location.reload(); return; }
-  try {
-    await _swReg.update();
-  } catch {}
-  if (_swReg.waiting) {
+  if (state.updateAvailable && _swReg.waiting) {
     _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    return;
+  }
+  toast(t('checking_update'));
+  try { await _swReg.update(); } catch {}
+  if (_swReg.waiting) {
+    state.updateAvailable = true;
+    render();
   } else {
-    setTimeout(() => location.reload(), 400);
+    toast('✓ ' + t('up_to_date'));
   }
 }
 
@@ -3704,6 +3714,16 @@ window.addEventListener('load', () => {
       reg.update();
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
+      });
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            state.updateAvailable = true;
+            render();
+          }
+        });
       });
     }).catch(() => {});
     // SW now uses skipWaiting() on install — controllerchange triggers auto-reload
