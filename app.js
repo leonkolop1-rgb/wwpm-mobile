@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 67;
+const APP_VERSION = 68;
 
 const CHANGELOG = {
+  68: 'כפתור i — מידע על האפליקציה + תיבת מידע ירוקה בכניסה',
   67: 'עיצוב מסך ראשי — מרווח ויפה יותר',
   66: 'כפתור עדכון — לוחצים ומרענן מיד',
   65: 'תיקון כפתור עדכון ידני — לוחצים ומתעדכן מיד',
@@ -350,6 +351,17 @@ const STRINGS = {
     feedback_ph: 'כתבו כאן...', feedback_send: 'שלח', feedback_sending: 'שולח...',
     feedback_sent: 'תודה! הפידבק נשלח', feedback_err: 'שגיאה בשליחה',
     feedback_empty: 'נא לכתוב משהו קודם', feedback_chars: 'תווים נותרו',
+    info_btn_title: 'מידע על האפליקציה',
+    info_title: 'מידע על האפליקציה',
+    info_intro1: 'האפליקציה הזו היא <strong>כלי חברי ופשוט</strong> שנועד לעשות לכם סדר בכל ההשקעות שלכם — בין אם הן בארץ ובין אם הן פזורות ברחבי העולם.',
+    info_intro2: 'במקום לנהל גיליונות אקסל מפוזרים — הכל נמצא כאן במקום אחד: מסודר, ברור, ויזואלי.',
+    info_features_title: 'מה תוכלו לראות כאן:',
+    info_f1: 'סקירה מלאה של כלל הנכסים לפי מדינה, עם דגלים וסטטוסים',
+    info_f2: 'שווי שוק, הכנסות שכירות, משכנתאות והוצאות — הכל בגרפים פשוטים',
+    info_f3: 'ניתוח מספרים שעוזר להבין את התמונה הגדולה במבט אחד',
+    info_f4: 'השוואה בין נכסים שונים כדי לדעת מה באמת כדאי יותר',
+    info_footer: 'בקיצור — האפליקציה עובדת בשבילכם, כדי שתוכלו לקבל החלטות נכונות בביטחון ובלי כאב ראש. 💪',
+    info_got_it: 'הבנתי, תודה!',
   },
   eng: {
     app_title: 'World Wide Property Manager', login: 'Login',
@@ -526,6 +538,17 @@ const STRINGS = {
     feedback_ph: 'Write here...', feedback_send: 'Send', feedback_sending: 'Sending...',
     feedback_sent: 'Thank you! Feedback sent', feedback_err: 'Error sending',
     feedback_empty: 'Please write something first', feedback_chars: 'characters remaining',
+    info_btn_title: 'About this app',
+    info_title: 'About this app',
+    info_intro1: 'This app is a <strong>simple and friendly tool</strong> designed to bring order to all your investments — whether local or scattered around the world.',
+    info_intro2: 'Instead of managing scattered spreadsheets — everything is here in one place: organized, clear, and visual.',
+    info_features_title: 'What you can see here:',
+    info_f1: 'A full overview of all properties by country, with flags and statuses',
+    info_f2: 'Market value, rental income, mortgages and expenses — all in simple charts',
+    info_f3: 'Number analysis that helps you understand the big picture at a glance',
+    info_f4: 'Comparison between different properties to know what is truly more worthwhile',
+    info_footer: 'In short — the app works for you, so you can make the right decisions with confidence and without headaches. 💪',
+    info_got_it: 'Got it, thanks!',
   },
   rus: {
     app_title: 'Управление недвижимостью', login: 'Вход',
@@ -702,6 +725,17 @@ const STRINGS = {
     feedback_ph: 'Напишите здесь...', feedback_send: 'Отправить', feedback_sending: 'Отправка...',
     feedback_sent: 'Спасибо! Фидбэк отправлен', feedback_err: 'Ошибка отправки',
     feedback_empty: 'Пожалуйста, напишите что-нибудь', feedback_chars: 'символов осталось',
+    info_btn_title: 'О приложении',
+    info_title: 'О приложении',
+    info_intro1: 'Это приложение — <strong>простой и удобный инструмент</strong> для систематизации всех ваших инвестиций — как местных, так и зарубежных.',
+    info_intro2: 'Вместо разрозненных таблиц — всё собрано в одном месте: структурированно, наглядно, понятно.',
+    info_features_title: 'Что вы найдёте здесь:',
+    info_f1: 'Полный обзор всех объектов по странам, с флагами и статусами',
+    info_f2: 'Рыночная стоимость, доходы от аренды, ипотека и расходы — всё в простых графиках',
+    info_f3: 'Числовой анализ, который помогает увидеть общую картину с первого взгляда',
+    info_f4: 'Сравнение объектов недвижимости, чтобы понять что выгоднее',
+    info_footer: 'Словом — приложение работает на вас, чтобы вы могли принимать правильные решения уверенно и без лишних хлопот. 💪',
+    info_got_it: 'Понятно, спасибо!',
   },
 };
 
@@ -823,6 +857,36 @@ function setLangClose(lang, id) {
 // ===== FEEDBACK =====
 function renderFeedbackBtn() {
   return `<button class="icon-btn feedback-icon-btn" onclick="showFeedbackModal()" title="${t('feedback_btn')}">💬</button>`;
+}
+
+function renderInfoBtn() {
+  return `<button class="icon-btn info-icon-btn" onclick="showInfoModal()" title="${t('info_btn_title')}"><span class="info-btn-i">i</span></button>`;
+}
+
+function showInfoModal() {
+  const id = 'info-modal';
+  if (document.getElementById(id)) { closeModal(id); return; }
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'modal-overlay';
+  el.setAttribute('onclick', `if(event.target===this)closeModal('${id}')`);
+  el.innerHTML = `
+    <div class="modal-card info-modal-card">
+      <div class="modal-title">ℹ️ ${t('info_title')}</div>
+      <p class="info-para">${t('info_intro1')}</p>
+      <p class="info-para">${t('info_intro2')}</p>
+      <div class="info-features-title">${t('info_features_title')}</div>
+      <ul class="info-list">
+        <li>${t('info_f1')}</li>
+        <li>${t('info_f2')}</li>
+        <li>${t('info_f3')}</li>
+        <li>${t('info_f4')}</li>
+      </ul>
+      <p class="info-footer">${t('info_footer')}</p>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="closeModal('${id}')">${t('info_got_it')}</button>
+    </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('visible'));
 }
 
 function showFeedbackModal() {
@@ -967,7 +1031,18 @@ function renderLogin() {
         </form>
         <button class="btn-forgot-password" onclick="doForgotPassword()">${t('forgot_password')}</button>`}
       </div>
-      <div class="login-version">v1.1.0</div>
+      <div class="login-info-box">
+        <div class="login-info-title">ℹ️ ${t('info_title')}</div>
+        <p class="login-info-text">${t('info_intro1')}</p>
+        <ul class="login-info-list">
+          <li>${t('info_f1')}</li>
+          <li>${t('info_f2')}</li>
+          <li>${t('info_f3')}</li>
+          <li>${t('info_f4')}</li>
+        </ul>
+        <p class="login-info-footer">${t('info_footer')}</p>
+      </div>
+      <div class="login-version">v${APP_VERSION}</div>
     </div>`;
 }
 
@@ -991,7 +1066,7 @@ function renderHome() {
   return `
     <div class="page">
       <header class="top-bar">
-        <div class="top-bar-title">${t('my_countries')}</div>
+        ${renderInfoBtn()}
         <div class="top-bar-actions">
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
           <button class="icon-btn" onclick="shareApp()" title="${t('share_title')}">🔗</button>

@@ -409,7 +409,51 @@ body::after {
 }
 .btn-secondary:active { background: rgba(99,102,241,0.14); transform: scale(0.95); }
 
-.login-version { margin-top: 20px; font-size: 0.68rem; color: var(--muted); opacity: 0.25; font-family: monospace; letter-spacing: 0.08em; position: relative; z-index: 1; }
+.login-version { margin-top: 14px; font-size: 0.68rem; color: var(--muted); opacity: 0.25; font-family: monospace; letter-spacing: 0.08em; position: relative; z-index: 1; }
+
+.login-info-box {
+  width: 100%;
+  max-width: 380px;
+  margin-top: 22px;
+  padding: 18px 20px;
+  background: rgba(16, 185, 129, 0.07);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: 16px;
+  position: relative;
+  z-index: 1;
+  direction: rtl;
+}
+.login-info-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(52, 211, 153, 0.95);
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+.login-info-text {
+  font-size: 0.82rem;
+  color: rgba(167, 243, 208, 0.8);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.login-info-list {
+  padding-inline-start: 16px;
+  margin: 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.login-info-list li {
+  font-size: 0.8rem;
+  color: rgba(167, 243, 208, 0.75);
+  line-height: 1.5;
+}
+.login-info-footer {
+  font-size: 0.8rem;
+  color: rgba(167, 243, 208, 0.8);
+  line-height: 1.6;
+  margin: 0;
+}
 
 /* ===== SPLASH ===== */
 .splash {
@@ -1437,6 +1481,30 @@ body::after {
   opacity: 0.85;
 }
 .feedback-icon-btn:active { opacity: 1; }
+
+.info-icon-btn { opacity: 0.7; }
+.info-icon-btn:active { opacity: 1; }
+.info-btn-i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(160,180,255,0.55);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-style: italic;
+  color: rgba(160,180,255,0.85);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.info-modal-card { max-height: 82dvh; overflow-y: auto; }
+.info-para { font-size: 0.88rem; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+.info-features-title { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.info-list { padding-inline-start: 18px; margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.info-list li { font-size: 0.85rem; color: var(--text2); line-height: 1.5; }
+.info-footer { font-size: 0.85rem; color: var(--text2); line-height: 1.6; margin-bottom: 4px; }
 
 .feedback-desc {
   font-size: 0.84rem;
