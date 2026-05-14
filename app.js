@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 76;
+const APP_VERSION = 77;
 
 const CHANGELOG = {
+  77: 'שיתוף PDF — שתף כל עמוד כקובץ PDF ישירות מהאפליקציה',
   76: 'פילטר מדינות בדף הראשי עם דגלים — בחר מדינה וראה רק אותה',
   75: 'דרופ דאון מדינות בדף הראשי — ניווט מהיר למדינה ספציפית',
   74: 'תנאי שימוש בהרשמה — חובה לאשר לפני יצירת חשבון',
@@ -346,6 +347,7 @@ const STRINGS = {
     cad_opt: 'C$ דולר קנדי (CAD)', aud_opt: 'A$ דולר אוסטרלי (AUD)',
     // Misc
     display_currency_title: 'מטבע תצוגה', share_msg_title: 'WWPM — נתוני הנכסים שלי', link_copied: 'הלינק הועתק',
+    share_pdf: 'שתף PDF', generating_pdf: 'מייצר PDF...', pdf_error: 'שגיאה בייצור ה-PDF',
     confirm_delete_country: 'למחוק את', confirm_delete_country_props: 'נכסים יימחקו לצמיתות',
     checking_update: 'בודק עדכונים...', up_to_date: 'האפליקציה מעודכנת',
     // Registration
@@ -536,6 +538,7 @@ const STRINGS = {
     cad_opt: 'C$ CAD Dollar (CAD)', aud_opt: 'A$ AUD Dollar (AUD)',
     // Misc
     display_currency_title: 'Display currency', share_msg_title: 'WWPM — My property data', link_copied: 'Link copied',
+    share_pdf: 'Share PDF', generating_pdf: 'Generating PDF...', pdf_error: 'Error generating PDF',
     confirm_delete_country: 'Delete', confirm_delete_country_props: 'properties will be permanently deleted',
     checking_update: 'Checking for updates...', up_to_date: 'App is up to date',
     // Registration
@@ -726,6 +729,7 @@ const STRINGS = {
     cad_opt: 'C$ Кан. доллар (CAD)', aud_opt: 'A$ Австр. доллар (AUD)',
     // Misc
     display_currency_title: 'Валюта', share_msg_title: 'WWPM — Мои данные недвижимости', link_copied: 'Ссылка скопирована',
+    share_pdf: 'Поделиться PDF', generating_pdf: 'Создание PDF...', pdf_error: 'Ошибка создания PDF',
     confirm_delete_country: 'Удалить', confirm_delete_country_props: 'объектов будет удалено',
     checking_update: 'Проверка обновлений...', up_to_date: 'Приложение обновлено',
     // Registration
@@ -1110,7 +1114,7 @@ function renderHome() {
         ${renderInfoBtn()}
         <div class="top-bar-actions">
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
-          <button class="icon-btn" onclick="shareApp()" title="${t('share_title')}">🔗</button>
+          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
           ${renderFeedbackBtn()}
@@ -1203,6 +1207,7 @@ function renderCountry() {
         <div class="top-bar-actions">
           ${renderLangDropdown('lang-c', true)}
           ${renderCurrencySelector()}
+          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
           ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-prop-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>` : ''}
         </div>
@@ -1552,6 +1557,7 @@ function renderProperty() {
           ${renderFeedbackBtn()}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
+          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
           <button class="icon-btn" onclick="window.print()" title="${t('print')}">🖨️</button>
         </div>
       </header>
@@ -1898,6 +1904,7 @@ function renderExpenses() {
         <div class="top-bar-title">${cat.label}</div>
         <div class="top-bar-actions">
           ${renderLangDropdown('lang-e', true)}
+          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
           <button class="icon-btn" onclick="showModal('exp-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
         </div>
       </header>
@@ -1974,6 +1981,7 @@ function renderRentHistory() {
         <div class="top-bar-actions">
           ${renderLangDropdown('lang-r', true)}
           ${renderCurrencySelector()}
+          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
           <button class="icon-btn" onclick="showModal('rent-modal')" style="font-size:1.6rem;color:var(--accent)">＋</button>
         </div>
       </header>
@@ -2069,7 +2077,7 @@ function renderAnalytics() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">📊 ${t('analytics_header')}</div>
-        <div class="top-bar-actions">${renderLangDropdown('lang-a', true)}${renderFeedbackBtn()}${renderCurrencySelector()}</div>
+        <div class="top-bar-actions">${renderLangDropdown('lang-a', true)}<button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>${renderFeedbackBtn()}${renderCurrencySelector()}</div>
       </header>
       <div class="content">
         ${renderRateBar()}
@@ -3118,6 +3126,100 @@ function shareApp() {
     navigator.share({ title: t('share_msg_title'), url });
   } else {
     navigator.clipboard.writeText(url).then(() => toast(`✓ ${t('link_copied')}`));
+  }
+}
+
+function _getPDFFilename() {
+  const v = state.view;
+  if (v === 'country') {
+    const c = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    return `WWPM-${(c?.name || 'country')}.pdf`;
+  }
+  if (v === 'property') {
+    const c = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    const p = (c?.properties || []).find(p => p.id === state.currentPropertyId);
+    return `WWPM-${(p?.name || p?.address || 'property')}.pdf`;
+  }
+  if (v === 'analytics')    return 'WWPM-Analytics.pdf';
+  if (v === 'expenses')     return 'WWPM-Expenses.pdf';
+  if (v === 'rent-history') return 'WWPM-RentHistory.pdf';
+  return 'WWPM-Portfolio.pdf';
+}
+
+async function sharePDF() {
+  const content = document.querySelector('.content');
+  if (!content) return;
+
+  toast('⏳ ' + t('generating_pdf'));
+
+  const page       = document.querySelector('.page');
+  const bottomBar  = document.querySelector('.bottom-bar');
+  const topBar     = document.querySelector('.top-bar');
+
+  // Expand for full capture
+  const prev = {
+    pageH:   page?.style.height,       pageOv:  page?.style.overflow,
+    contH:   content.style.height,     contOv:  content.style.overflow,
+    contPb:  content.style.paddingBottom,
+  };
+  if (page)    { page.style.height = 'auto'; page.style.overflow = 'visible'; }
+  content.style.height      = 'auto';
+  content.style.overflow    = 'visible';
+  content.style.paddingBottom = '24px';
+  if (bottomBar) bottomBar.style.display = 'none';
+  if (topBar)    topBar.style.display    = 'none';
+
+  try {
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#0f0f14',
+      scrollX: 0,
+      scrollY: 0,
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.88);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageW  = pdf.internal.pageSize.getWidth();
+    const pageH  = pdf.internal.pageSize.getHeight();
+    const imgH   = (canvas.height * pageW) / canvas.width;
+
+    let remaining = imgH;
+    let posY = 0;
+    pdf.addImage(imgData, 'JPEG', 0, posY, pageW, imgH);
+    remaining -= pageH;
+    while (remaining > 0) {
+      posY -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, posY, pageW, imgH);
+      remaining -= pageH;
+    }
+
+    const filename = _getPDFFilename();
+    const blob = pdf.output('blob');
+    const file = new File([blob], filename, { type: 'application/pdf' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename.replace('.pdf', '') });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  } catch (err) {
+    toast('❌ ' + t('pdf_error'));
+    console.error('PDF:', err);
+  } finally {
+    if (page)    { page.style.height = prev.pageH; page.style.overflow = prev.pageOv; }
+    content.style.height      = prev.contH;
+    content.style.overflow    = prev.contOv;
+    content.style.paddingBottom = prev.contPb;
+    if (bottomBar) bottomBar.style.display = '';
+    if (topBar)    topBar.style.display    = '';
   }
 }
 
