@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 65;
+const APP_VERSION = 66;
 
 const CHANGELOG = {
+  66: 'כפתור עדכון — לוחצים ומרענן מיד',
   65: 'תיקון כפתור עדכון ידני — לוחצים ומתעדכן מיד',
   64: 'תיקון שורה עליונה — כפתורים נכנסים בשורה אחת',
   63: 'פידבק נשלח ישירות למייל — ללא פתיחת אפליקציית מייל',
@@ -3387,13 +3388,11 @@ async function forceUpdateCheck() {
   if (!('serviceWorker' in navigator) || !_swReg) { location.reload(); return; }
   try {
     await _swReg.update();
-    if (_swReg.waiting) {
-      _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    } else {
-      setTimeout(() => toast(`✓ ${t('up_to_date')}`), 2000);
-    }
-  } catch {
-    location.reload();
+  } catch {}
+  if (_swReg.waiting) {
+    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  } else {
+    setTimeout(() => location.reload(), 400);
   }
 }
 
