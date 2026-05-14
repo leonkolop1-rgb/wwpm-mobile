@@ -3777,7 +3777,7 @@ function showValueBreakdown() {
         border-radius:14px;padding:12px;
         color:rgba(200,210,250,0.9);font-size:0.9rem;font-weight:700;
         cursor:pointer;-webkit-tap-highlight-color:transparent;
-      ">${t('cancel')}</button>
+      ">סגור</button>
     </div>`;
 
   document.body.appendChild(overlay);
