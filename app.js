@@ -1558,7 +1558,6 @@ function renderProperty() {
           ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
           <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
-          <button class="icon-btn" onclick="window.print()" title="${t('print')}">🖨️</button>
         </div>
       </header>
 
