@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 70;
+const APP_VERSION = 71;
 
 const CHANGELOG = {
+  71: 'אינטגרציה עם גוגל מפות — כפתור פתח במפות בדף הדירה',
   70: 'מטבע מלא בכל עמוד + בחירת שפה בכל עמוד',
   69: 'תיקון כפתור i — עכשיו פותח מודל מידע',
   68: 'כפתור i — מידע על האפליקציה + תיבת מידע ירוקה בכניסה',
@@ -228,7 +229,7 @@ const STRINGS = {
     month_label: 'חודש', amount_label: 'סכום',
     // Property detail
     prop_photo: 'תמונת נכס', replace_photo: 'החלף', print: 'הדפס',
-    city_detail: 'עיר', address_detail: 'כתובת', country_detail: 'מדינה',
+    city_detail: 'עיר', address_detail: 'כתובת', country_detail: 'מדינה', open_in_maps: 'פתח במפות',
     purchase_date_detail: 'תאריך קנייה', area_detail: 'שטח',
     floor_detail: 'קומה', rooms_detail: 'חדרים', sqm: 'מ"ר',
     // Tenant
@@ -415,7 +416,7 @@ const STRINGS = {
     month_label: 'Month', amount_label: 'Amount',
     // Property detail
     prop_photo: 'Property photo', replace_photo: 'Replace', print: 'Print',
-    city_detail: 'City', address_detail: 'Address', country_detail: 'Country',
+    city_detail: 'City', address_detail: 'Address', country_detail: 'Country', open_in_maps: 'Open in Maps',
     purchase_date_detail: 'Purchase date', area_detail: 'Area',
     floor_detail: 'Floor', rooms_detail: 'Rooms', sqm: 'm²',
     // Tenant
@@ -602,7 +603,7 @@ const STRINGS = {
     month_label: 'Месяц', amount_label: 'Сумма',
     // Property detail
     prop_photo: 'Фото объекта', replace_photo: 'Заменить', print: 'Печать',
-    city_detail: 'Город', address_detail: 'Адрес', country_detail: 'Страна',
+    city_detail: 'Город', address_detail: 'Адрес', country_detail: 'Страна', open_in_maps: 'Открыть в картах',
     purchase_date_detail: 'Дата покупки', area_detail: 'Площадь',
     floor_detail: 'Этаж', rooms_detail: 'Комнат', sqm: 'м²',
     // Tenant
@@ -1550,7 +1551,13 @@ function renderProperty() {
         <!-- Property details -->
         <div class="detail-card">
           ${row('📍 ' + t('city_detail'), p.city)}
-          ${row('🏠 ' + t('address_detail'), p.address)}
+          ${p.address ? `<div class="detail-row">
+            <span class="detail-label">🏠 ${t('address_detail')}</span>
+            <span class="detail-value" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start">
+              <span>${esc(p.address)}</span>
+              <a href="https://maps.google.com/?q=${encodeURIComponent([p.address, p.city, country?.name].filter(Boolean).join(', '))}" target="_blank" rel="noopener noreferrer" class="maps-btn" onclick="event.stopPropagation()">📍 ${t('open_in_maps')}</a>
+            </span>
+          </div>` : ''}
           ${row('🌍 ' + t('country_detail'), country?.name)}
           ${row('📅 ' + t('purchase_date_detail'), p.purchaseDate ? new Date(p.purchaseDate).toLocaleDateString('he-IL') : '')}
           ${row('📐 ' + t('area_detail'), p.area ? `${p.area} ${t('sqm')}` : '')}
