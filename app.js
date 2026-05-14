@@ -3213,8 +3213,18 @@ async function sharePDF() {
       }
     }
 
-    // Fallback: open blob URL in new tab → iOS Safari shows PDF viewer with its own share button
-    window.open(blobUrl, '_blank');
+    // Fallback by platform:
+    // iOS → open in new tab (Safari PDF viewer has its own share button)
+    // Android / desktop → trigger download, then share from Files app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      window.open(blobUrl, '_blank');
+    } else {
+      const a = document.createElement('a');
+      a.href = blobUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
 
   } catch (err) {
