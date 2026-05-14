@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 71;
+const APP_VERSION = 72;
 
 const CHANGELOG = {
+  72: 'כרטיס גוגל מפות — חלונית בולטת עם כפתור ניווט בדף הדירה',
   71: 'אינטגרציה עם גוגל מפות — כפתור פתח במפות בדף הדירה',
   70: 'מטבע מלא בכל עמוד + בחירת שפה בכל עמוד',
   69: 'תיקון כפתור i — עכשיו פותח מודל מידע',
@@ -1551,19 +1552,30 @@ function renderProperty() {
         <!-- Property details -->
         <div class="detail-card">
           ${row('📍 ' + t('city_detail'), p.city)}
-          ${p.address ? `<div class="detail-row">
-            <span class="detail-label">🏠 ${t('address_detail')}</span>
-            <span class="detail-value" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start">
-              <span>${esc(p.address)}</span>
-              <a href="https://maps.google.com/?q=${encodeURIComponent([p.address, p.city, country?.name].filter(Boolean).join(', '))}" target="_blank" rel="noopener noreferrer" class="maps-btn" onclick="event.stopPropagation()">📍 ${t('open_in_maps')}</a>
-            </span>
-          </div>` : ''}
+          ${row('🏠 ' + t('address_detail'), p.address)}
           ${row('🌍 ' + t('country_detail'), country?.name)}
           ${row('📅 ' + t('purchase_date_detail'), p.purchaseDate ? new Date(p.purchaseDate).toLocaleDateString('he-IL') : '')}
           ${row('📐 ' + t('area_detail'), p.area ? `${p.area} ${t('sqm')}` : '')}
           ${row('🏢 ' + t('floor_detail'), p.floor != null ? String(p.floor) : '')}
           ${row('🛏️ ' + t('rooms_detail'), p.rooms ? String(p.rooms) : '')}
         </div>
+
+        ${(p.address || p.city) ? (() => {
+          const mapsQuery = encodeURIComponent([p.address, p.city, country?.name].filter(Boolean).join(', '));
+          const mapsUrl = `https://maps.google.com/?q=${mapsQuery}`;
+          const displayAddr = [p.address, p.city].filter(Boolean).join(', ');
+          return `<div class="maps-card">
+            <div class="maps-card-pin">📍</div>
+            <div class="maps-card-body">
+              <div class="maps-card-title">${t('open_in_maps')}</div>
+              <div class="maps-card-addr">${esc(displayAddr)}</div>
+            </div>
+            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="maps-card-btn" onclick="event.stopPropagation()">
+              <span>Google Maps</span>
+              <span class="maps-card-arrow">↗</span>
+            </a>
+          </div>`;
+        })() : ''}
 
         <!-- Tenant -->
         ${(tenant.name || tenant.startDate || tenant.endDate) ? `
