@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 85;
+const APP_VERSION = 86;
 
 const CHANGELOG = {
+  86: 'תיקון פופ-אפ עדכון — מציג מה חדש בגרסה הנכונה אחרי העדכון',
   85: 'תרגום כפתור פירוט שווי + אישור יציאה — שואל לפני יציאה מהאפליקציה',
   84: 'הערות בעדכון שווי — הוסף הערה לכל עדכון, כפתור i לצפייה בהיסטוריה',
   83: 'ריבוע עליית שווי — רואים בכמה עלה הנכס מאז הרכישה עם אחוז',
@@ -2953,27 +2954,59 @@ async function deletePropertyDoc(fileId) {
 function showChangelogPopup() {
   const note = CHANGELOG[APP_VERSION] || '';
   if (!note) return;
-  const existing = document.getElementById('_changelog-popup');
-  if (existing) { existing.remove(); return; }
-  const pop = document.createElement('div');
-  pop.id = '_changelog-popup';
-  Object.assign(pop.style, {
-    position: 'fixed', bottom: '70px', left: '16px', right: '16px',
-    background: '#1e1b4b', border: '1px solid rgba(129,140,248,0.4)',
-    borderRadius: '12px', padding: '12px 16px',
-    color: 'rgba(199,210,254,0.95)', fontSize: '0.82rem', lineHeight: '1.5',
-    zIndex: '10000', boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+  if (document.getElementById('_changelog-popup')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = '_changelog-popup';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.55)',
+    backdropFilter: 'blur(6px)',
+    zIndex: '10000',
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    padding: '0 0 32px',
+    opacity: '0', transition: 'opacity 0.25s ease',
+  });
+
+  const card = document.createElement('div');
+  Object.assign(card.style, {
+    background: 'linear-gradient(145deg, #be185d 0%, #ec4899 45%, #f472b6 100%)',
+    borderRadius: '24px',
+    padding: '28px 24px 24px',
+    width: 'calc(100% - 32px)',
+    maxWidth: '420px',
+    color: 'white',
+    boxShadow: '0 8px 48px rgba(236,72,153,0.55), 0 2px 12px rgba(0,0,0,0.4)',
+    transform: 'translateY(40px)',
+    transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)',
+    textAlign: 'center',
     direction: 'rtl',
   });
-  pop.innerHTML = `<strong style="color:#a5b4fc">${t('version_label')} ${APP_VERSION} — ${t('whats_new')}</strong><br>${esc(note)}`;
-  document.body.appendChild(pop);
-  setTimeout(() => pop.remove(), 5000);
+
+  card.innerHTML = `
+    <div style="font-size:2.8rem;line-height:1;margin-bottom:10px">✅</div>
+    <div style="font-size:1.25rem;font-weight:800;letter-spacing:-0.01em;margin-bottom:4px">האפליקציה עודכנה!</div>
+    <div style="font-size:0.78rem;opacity:0.75;margin-bottom:14px">גרסה ${APP_VERSION} — מה חדש</div>
+    <div style="background:rgba(0,0,0,0.18);border-radius:12px;padding:10px 14px;font-size:0.84rem;line-height:1.5;margin-bottom:20px;text-align:right">${esc(note)}</div>
+    <button onclick="document.getElementById('_changelog-popup').remove()" style="
+      width:100%;background:white;color:#be185d;border:none;
+      border-radius:14px;padding:14px;font-size:1rem;font-weight:800;
+      cursor:pointer;letter-spacing:0.01em;
+      box-shadow:0 2px 12px rgba(0,0,0,0.15);
+      -webkit-tap-highlight-color:transparent;">
+      👍 הבנתי
+    </button>`;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    card.style.transform = 'translateY(0)';
+  });
 }
 
 function showUpdatePopup() {
   if (document.getElementById('_update-popup')) return;
-
-  const note = CHANGELOG[APP_VERSION] || '';
 
   const overlay = document.createElement('div');
   overlay.id = '_update-popup';
@@ -3005,8 +3038,7 @@ function showUpdatePopup() {
   card.innerHTML = `
     <div style="font-size:2.8rem;line-height:1;margin-bottom:10px">✨</div>
     <div style="font-size:1.25rem;font-weight:800;letter-spacing:-0.01em;margin-bottom:4px">${t('new_version_btn').replace('✨ ', '')}</div>
-    <div style="font-size:0.78rem;opacity:0.75;margin-bottom:${note ? '14px' : '20px'}">גרסה ${APP_VERSION}</div>
-    ${note ? `<div style="background:rgba(0,0,0,0.18);border-radius:12px;padding:10px 14px;font-size:0.84rem;line-height:1.5;margin-bottom:20px;text-align:right">${esc(note)}</div>` : ''}
+    <div style="font-size:0.78rem;opacity:0.75;margin-bottom:20px">גרסה חדשה זמינה — לחץ לעדכן</div>
     <button onclick="applyUpdate()" style="
       width:100%;background:white;color:#be185d;border:none;
       border-radius:14px;padding:14px;font-size:1rem;font-weight:800;
