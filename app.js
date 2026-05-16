@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 88;
+const APP_VERSION = 89;
 
 const CHANGELOG = {
+  89: 'תיקון מטבע שכירות — מוצג תמיד בסכום המקורי שהוגדר, ללא תלות בשער',
   88: 'היסטוריית שכירות — חלונית עם פילטר שנה, עריכה ומחיקה של תשלומים',
   87: 'חלון פירוט שווי כסוף — טבלת נכסים עם מחיר רכישה, שווי נוכחי ורווח',
   86: 'תיקון פופ-אפ עדכון — מציג מה חדש בגרסה הנכונה אחרי העדכון',
@@ -804,6 +805,17 @@ function fmtCurrency(amountUSD, cur = 'USD') {
   if (Math.abs(n) >= 100000)  return sym + Math.round(n / 1000) + 'K';
   return sym + n.toLocaleString();
 }
+// Show original stored amount when displayCurrency matches; otherwise convert from USD
+function fmtOrig(amountUSD, origAmount, origCurrency, displayCurrency) {
+  if (origAmount != null && origCurrency && displayCurrency === origCurrency) {
+    const n = Math.round(origAmount);
+    const sym = CURRENCIES[displayCurrency] || displayCurrency;
+    if (Math.abs(n) >= 1000000) return sym + (n / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (Math.abs(n) >= 100000)  return sym + Math.round(n / 1000) + 'K';
+    return sym + n.toLocaleString();
+  }
+  return fmtCurrency(amountUSD, displayCurrency);
+}
 
 // Predefined countries for the picker
 const COUNTRY_PRESETS = [
@@ -1424,7 +1436,7 @@ function renderPropertyCard(p, countryCurrency = 'USD', countryId = '') {
         ${p.monthlyRent ? `
           <div class="prop-value-item">
             <div class="prop-value-label">${t('monthly_rent')}</div>
-            <div class="prop-value-num" style="color:var(--success)">${fmtCurrency(p.monthlyRent, cur)}</div>
+            <div class="prop-value-num" style="color:var(--success)">${fmtOrig(p.monthlyRent, p.monthlyRentOriginal, p.monthlyRentCurrency, cur)}</div>
           </div>` : ''}
         ${p.purchasePrice ? `
           <div class="prop-value-item">
@@ -1480,8 +1492,10 @@ function buildRentMonthGrid(country) {
 
 function renderInlineRent(p, country, currency) {
   const allPaid = [...(p.rentHistory || [])].filter(r => !r.autoFilled).sort((a, b) => b.month.localeCompare(a.month));
-  const defaultAmount = p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '';
-  const monthlyDisplay = p.monthlyRent ? fmtCurrency(Math.round(p.monthlyRent), currency) : '—';
+  const defaultAmount = (p.monthlyRentOriginal != null && p.monthlyRentCurrency === currency)
+    ? p.monthlyRentOriginal
+    : (p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '');
+  const monthlyDisplay = p.monthlyRent ? fmtOrig(p.monthlyRent, p.monthlyRentOriginal, p.monthlyRentCurrency, currency) : '—';
   return `
   <div class="detail-card" style="padding-bottom:14px">
     <div class="detail-card-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -1513,7 +1527,7 @@ function _buildRentHistoryList(p, currency, year) {
   return items.map(r => `
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid rgba(99,102,241,0.08)">
       <span style="color:var(--text2);font-size:0.85rem;flex:1">${fmtMonthHeb(r.month)}</span>
-      <span style="color:var(--success);font-weight:700;font-family:var(--font-num);font-size:0.95rem">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+      <span style="color:var(--success);font-weight:700;font-family:var(--font-num);font-size:0.95rem">${fmtOrig(r.amount, r.originalAmount, r.paymentCurrency, currency)}</span>
       ${!state.viewOnly ? `
         <button onclick="showRentEditModal('${esc(r.id)}','${esc(r.paymentCurrency || currency)}')" style="background:none;border:none;color:var(--accent-light);font-size:0.78rem;font-weight:600;cursor:pointer;padding:4px 6px;opacity:0.8">✏️</button>
         <button onclick="deleteRentPaymentFromModal('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:0.9rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
@@ -1659,6 +1673,7 @@ async function confirmEditRent(entryId, entryCurrency) {
   const entry = (p.rentHistory || []).find(r => r.id === entryId);
   if (!entry) return;
   entry.amount = newDisplay / (rates[entryCurrency] || 1);
+  entry.originalAmount = newDisplay;
   entry.paymentCurrency = entryCurrency;
   document.getElementById('_rh-edit-overlay')?.remove();
   toast(t('saving'));
@@ -1690,7 +1705,7 @@ async function submitBulkRent(currency) {
   if (!p.rentHistory) p.rentHistory = [];
   for (const month of state.rentMonthSel) {
     p.rentHistory = p.rentHistory.filter(r => r.month !== month || r.autoFilled);
-    p.rentHistory.push({ id: uid(), month, amount: amountUSD, paymentCurrency: currency, autoFilled: false });
+    p.rentHistory.push({ id: uid(), month, amount: amountUSD, originalAmount: amountDisplay, paymentCurrency: currency, autoFilled: false });
   }
   state.rentMonthSel = [];
   await saveData();
@@ -1775,7 +1790,7 @@ function renderProperty() {
             ${(p.valueHistory?.length) ? `<button class="val-i-btn" onclick="event.stopPropagation();showModal('val-history-modal')" title="${t('value_history_title')}">i</button>` : ''}
           </div>
           ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
-          ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtCurrency(Math.round(p.monthlyRent), currency)}</div></div>` : ''}
+          ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtOrig(p.monthlyRent, p.monthlyRentOriginal, p.monthlyRentCurrency, currency)}</div></div>` : ''}
           ${(p.currentValue && p.purchasePrice) ? (() => {
             const gain = p.currentValue - p.purchasePrice;
             const gainPct = Math.round((gain / p.purchasePrice) * 100);
@@ -2056,7 +2071,7 @@ function renderProperty() {
         </div>
         <div class="form-group">
           <label>${t('monthly_rent')} (${curSym})</label>
-          <input type="number" id="ep-rent" value="${fromUSDDisplay(p.monthlyRent)}" inputmode="numeric" placeholder="0" />
+          <input type="number" id="ep-rent" value="${(p.monthlyRentOriginal != null && p.monthlyRentCurrency === currency) ? p.monthlyRentOriginal : fromUSDDisplay(p.monthlyRent)}" inputmode="numeric" placeholder="0" />
         </div>
         <div class="form-group">
           <label>${t('status_label')}</label>
@@ -2228,7 +2243,7 @@ function renderRentHistory() {
           <div class="detail-card" style="padding:12px 16px">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
               <span style="color:var(--muted);font-size:0.88rem">${r.month || ''}</span>
-              <span style="color:var(--success);font-weight:700;direction:ltr;flex:1;text-align:left">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+              <span style="color:var(--success);font-weight:700;direction:ltr;flex:1;text-align:left">${fmtOrig(r.amount, r.originalAmount, r.paymentCurrency, currency)}</span>
               <button onclick="deleteRentPayment('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:1.1rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
             </div>
           </div>`).join('')}
@@ -2979,7 +2994,7 @@ function openQuickUpdate(propId, countryId, evt) {
   document.getElementById('qu-value-label').textContent  = `${t('current_value')} (${curSym})`;
   document.getElementById('qu-rent-label').textContent   = `${t('monthly_rent')} (${curSym})`;
   document.getElementById('qu-value').value  = toDisp(p.currentValue);
-  document.getElementById('qu-rent').value   = toDisp(p.monthlyRent);
+  document.getElementById('qu-rent').value   = (p.monthlyRentOriginal != null && p.monthlyRentCurrency === cur) ? p.monthlyRentOriginal : toDisp(p.monthlyRent);
   document.getElementById('qu-status').value = p.status || 'owned';
   showModal('quick-update-modal');
   setTimeout(() => { const v = document.getElementById('qu-value'); v?.focus(); v?.select(); }, 100);
@@ -2996,7 +3011,11 @@ async function submitQuickUpdate() {
   const newRent   = toUSD(document.getElementById('qu-rent').value);
   const newStatus = document.getElementById('qu-status').value;
   if (newVal  !== undefined) p.currentValue = newVal;
-  if (newRent !== undefined) p.monthlyRent  = newRent;
+  if (newRent !== undefined) {
+    p.monthlyRent = newRent;
+    const rentOrig = parseFloat(document.getElementById('qu-rent').value);
+    if (rentOrig > 0) { p.monthlyRentOriginal = rentOrig; p.monthlyRentCurrency = cur; }
+  }
   p.status = newStatus;
   closeModal('quick-update-modal');
   haptic(10);
@@ -3645,6 +3664,8 @@ async function submitAddProperty(currency) {
     currentValue: toUSD(document.getElementById('np-value').value),
     purchasePrice: toUSD(document.getElementById('np-purchase').value),
     monthlyRent: toUSD(document.getElementById('np-rent').value),
+    monthlyRentOriginal: parseFloat(document.getElementById('np-rent').value) || undefined,
+    monthlyRentCurrency: currency,
     purchaseDate: document.getElementById('np-date').value || undefined,
     rooms: npRooms > 0 ? npRooms : undefined,
     area:  npArea  > 0 ? npArea  : undefined,
@@ -3709,7 +3730,12 @@ async function submitEditProperty(currency) {
   // Financials
   const cv = toUSD(getVal('ep-value'));     if (cv)  p.currentValue  = cv;
   const pp = toUSD(getVal('ep-purchase'));  if (pp)  p.purchasePrice = pp;
-  const mr = toUSD(getVal('ep-rent'));      if (mr !== undefined) p.monthlyRent = mr || undefined;
+  const mr = toUSD(getVal('ep-rent'));
+  if (mr !== undefined) {
+    p.monthlyRent = mr || undefined;
+    const mrOrig = parseFloat(getVal('ep-rent'));
+    if (mrOrig > 0) { p.monthlyRentOriginal = mrOrig; p.monthlyRentCurrency = currency; }
+  }
   const pd = getVal('ep-purchase-date');    if (pd)  p.purchaseDate  = pd;
   p.status = getVal('ep-status') || p.status;
 
