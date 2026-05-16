@@ -2344,6 +2344,7 @@ function renderAnalytics() {
 
   // Group by currency
   const byCurrency = {};
+  const currencyCountries = {};
   for (const p of allProps) {
     const cur = getCur(p);
     if (!byCurrency[cur]) byCurrency[cur] = { value: 0, invested: 0, rent: 0, expenses: 0, mortgage: 0 };
@@ -2354,6 +2355,10 @@ function renderAnalytics() {
       .reduce((s,e) => s + (Number(e.amount)||0), 0);
     byCurrency[cur].mortgage += (p.mortgages||[]).filter(m => m.endDate && new Date(m.endDate) > today)
       .reduce((s, m) => s + (Number(m.monthlyPayment)||0), 0);
+    if (p._country) {
+      if (!currencyCountries[cur]) currencyCountries[cur] = new Set();
+      currencyCountries[cur].add(p._country);
+    }
   }
 
   // Sort properties by value desc
@@ -2394,9 +2399,10 @@ function renderAnalytics() {
           const cashFlow = d.rent - d.mortgage;
           const cfPos = cashFlow >= 0;
           const portYield = d.value > 0 && d.rent > 0 ? (d.rent * 12 / d.value * 100).toFixed(1) : null;
+          const countryLabel = currencyCountries[cur] ? [...currencyCountries[cur]].join(', ') : cur;
           return `
         <div class="detail-card">
-          <div class="detail-card-title">💰 ${cur} ${(CURRENCIES[cur]||cur)}</div>
+          <div class="detail-card-title">💰 ${countryLabel}</div>
           <div class="detail-row"><span class="detail-label">${t('current_assets_value')}</span><span class="detail-value">${fmtCurrency(Math.round(d.value), cur)}</span></div>
           <div class="detail-row"><span class="detail-label">${t('total_invested_label')}</span><span class="detail-value" style="color:var(--muted)">${fmtCurrency(Math.round(d.invested), cur)}</span></div>
           <div class="detail-row"><span class="detail-label">${t('paper_gain')}</span><span class="detail-value" style="color:${d.value>=d.invested?'var(--success)':'var(--danger)'}">${fmtCurrency(Math.round(d.value-d.invested), cur)}</span></div>
