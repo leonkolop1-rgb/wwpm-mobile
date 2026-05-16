@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 89;
+const APP_VERSION = 90;
 
 const CHANGELOG = {
+  90: 'פרטי שוכר + חוזה + דרופ דאון בעלות + שווי לפי אחוז + תשואה ללא USD',
   89: 'תיקון מטבע שכירות — מוצג תמיד בסכום המקורי שהוגדר, ללא תלות בשער',
   88: 'היסטוריית שכירות — חלונית עם פילטר שנה, עריכה ומחיקה של תשלומים',
   87: 'חלון פירוט שווי כסוף — טבלת נכסים עם מחיר רכישה, שווי נוכחי ורווח',
@@ -319,7 +320,7 @@ const STRINGS = {
     rent_income_title: 'הכנסות שכ"ד', value_history_title: 'היסטוריית שווי',
     months_label: 'חודשים',
     // Total return
-    total_return_title: 'תשואה כוללת (USD)', total_invested_stat: 'סה"כ הושקע',
+    total_return_title: 'תשואה כוללת', total_invested_stat: 'סה"כ הושקע',
     rent_received_total: 'שכ"ד שהתקבל סה"כ', net_total_return: 'תשואה נטו כוללת',
     // Admin
     admin_panel: 'לוח בקרה', system_summary: 'סיכום מערכת',
@@ -352,7 +353,9 @@ const STRINGS = {
     rate_updated: 'עודכן',
     // Edit modal sections
     prop_details_section: 'פרטי הנכס', financial_details_section: 'פרטים כספיים',
-    tenant_details_section: 'פרטי שוכר', ownership_pct: 'אחוז בעלות (%)',
+    tenant_details_section: 'פרטי שוכר', ownership_pct: 'אחוז בעלות',
+    own_full: '100% — בעלות מלאה', own_half: '50% — מחצית', own_third: '33.333% — שליש', own_other: 'אחר...',
+    lease_contract: 'חוזה שכירות', upload_contract: 'העלה חוזה', download_contract: 'הורד חוזה', contract_uploaded: 'חוזה הועלה',
     full_name_ph: 'שם מלא', eval_date: 'תאריך הערכה',
     update_value_title: 'עדכון שווי נכס',
     value_notes: 'הערות', value_notes_ph: 'הערה על הערכת שווי זו...',
@@ -515,7 +518,7 @@ const STRINGS = {
     rent_income_title: 'Rent income', value_history_title: 'Value history',
     months_label: 'months',
     // Total return
-    total_return_title: 'Total Return (USD)', total_invested_stat: 'Total invested',
+    total_return_title: 'Total Return', total_invested_stat: 'Total invested',
     rent_received_total: 'Total rent received', net_total_return: 'Total net return',
     // Admin
     admin_panel: 'Dashboard', system_summary: 'System summary',
@@ -548,7 +551,9 @@ const STRINGS = {
     rate_updated: 'Updated',
     // Edit modal sections
     prop_details_section: 'Property details', financial_details_section: 'Financial details',
-    tenant_details_section: 'Tenant details', ownership_pct: 'Ownership (%)',
+    tenant_details_section: 'Tenant details', ownership_pct: 'Ownership',
+    own_full: '100% — Full ownership', own_half: '50% — Half', own_third: '33.333% — Third', own_other: 'Other...',
+    lease_contract: 'Lease Agreement', upload_contract: 'Upload Agreement', download_contract: 'Download Agreement', contract_uploaded: 'Agreement uploaded',
     full_name_ph: 'Full name', eval_date: 'Valuation date',
     update_value_title: 'Update Property Value',
     value_notes: 'Notes', value_notes_ph: 'Note about this valuation...',
@@ -711,7 +716,7 @@ const STRINGS = {
     rent_income_title: 'Доходы от аренды', value_history_title: 'История стоимости',
     months_label: 'месяцев',
     // Total return
-    total_return_title: 'Общая доходность (USD)', total_invested_stat: 'Всего инвестировано',
+    total_return_title: 'Общая доходность', total_invested_stat: 'Всего инвестировано',
     rent_received_total: 'Всего получено аренды', net_total_return: 'Общая чистая доходность',
     // Admin
     admin_panel: 'Панель управления', system_summary: 'Сводка системы',
@@ -744,7 +749,9 @@ const STRINGS = {
     rate_updated: 'Обновлено',
     // Edit modal sections
     prop_details_section: 'Детали объекта', financial_details_section: 'Финансовые данные',
-    tenant_details_section: 'Данные жильца', ownership_pct: 'Доля владения (%)',
+    tenant_details_section: 'Данные жильца', ownership_pct: 'Доля владения',
+    own_full: '100% — Полное владение', own_half: '50% — Половина', own_third: '33.333% — Треть', own_other: 'Другое...',
+    lease_contract: 'Договор аренды', upload_contract: 'Загрузить договор', download_contract: 'Скачать договор', contract_uploaded: 'Договор загружен',
     full_name_ph: 'Полное имя', eval_date: 'Дата оценки',
     update_value_title: 'Обновить стоимость',
     value_notes: 'Заметки', value_notes_ph: 'Заметка об этой оценке...',
@@ -1341,6 +1348,10 @@ function renderCountry() {
           <label>${t('purchase_date')}</label>
           <input type="date" id="np-date" />
         </div>
+        <div class="form-group">
+          <label>${t('ownership_pct')}</label>
+          ${_ownershipDropdown('np-ownership-sel','np-ownership-custom', null)}
+        </div>
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('add-prop-modal')">${t('cancel')}</button>
           <button class="btn-primary" style="flex:2" onclick="submitAddProperty('${esc(currency)}')">${t('add_property')}</button>
@@ -1465,6 +1476,38 @@ function lastNMonths(n) {
     d.setMonth(d.getMonth() - 1);
   }
   return months;
+}
+
+function onOwnershipChange(selId, customId) {
+  const sel = document.getElementById(selId);
+  const inp = document.getElementById(customId);
+  if (!sel || !inp) return;
+  inp.style.display = sel.value === 'other' ? 'block' : 'none';
+}
+
+function _ownershipDropdown(selId, customId, currentPct) {
+  const own = currentPct != null ? Math.round(currentPct * 10000) / 100 : 100;
+  const isOther = own !== 100 && own !== 50 && Math.abs(own - 33.333) > 0.01;
+  return `
+    <select id="${selId}" onchange="onOwnershipChange('${selId}','${customId}')"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text);padding:9px 12px;font-size:0.95rem">
+      <option value="100" ${!isOther && own===100?'selected':''}>${t('own_full')}</option>
+      <option value="50" ${!isOther && own===50?'selected':''}>${t('own_half')}</option>
+      <option value="33.333" ${!isOther && Math.abs(own-33.333)<0.01?'selected':''}>${t('own_third')}</option>
+      <option value="other" ${isOther?'selected':''}>${t('own_other')}</option>
+    </select>
+    <input type="number" id="${customId}" inputmode="decimal" step="0.001" min="0.001" max="100"
+      placeholder="הכנס אחוז..." value="${isOther?own:''}"
+      style="display:${isOther?'block':'none'};width:100%;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text);padding:9px 12px;font-size:0.95rem;font-family:var(--font-num);box-sizing:border-box">`;
+}
+
+function _readOwnership(selId, customId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return 1;
+  const val = sel.value === 'other'
+    ? parseFloat(document.getElementById(customId)?.value)
+    : parseFloat(sel.value);
+  return (val > 0 && val <= 100) ? val / 100 : 1;
 }
 
 function toggleRentMonth(month) {
@@ -1718,6 +1761,9 @@ function renderProperty() {
   if (!p) { goBack(); return ''; }
 
   const pct = p.ownershipPct != null ? Math.round(p.ownershipPct * 100) : 100;
+  const ownFrac = p.ownershipPct != null ? p.ownershipPct : 1;
+  const myCurrentValue   = p.currentValue   ? p.currentValue   * ownFrac : 0;
+  const myPurchasePrice  = p.purchasePrice  ? p.purchasePrice  * ownFrac : 0;
   const currency = state.displayCurrency || 'USD';
 
   // Expenses
@@ -1786,14 +1832,15 @@ function renderProperty() {
         <div class="values-grid">
           <div class="value-tile" onclick="showModal('update-val-modal')" style="cursor:pointer;position:relative">
             <div class="value-tile-label">${t('current_value')} ✏️</div>
-            <div class="value-tile-num">${p.currentValue ? fmtCurrency(Math.round(p.currentValue), currency) : '—'}</div>
+            <div class="value-tile-num">${myCurrentValue ? fmtCurrency(Math.round(myCurrentValue), currency) : '—'}</div>
+            ${ownFrac < 1 && p.currentValue ? `<div style="font-size:0.66rem;color:var(--muted);margin-top:2px">(${fmtCurrency(Math.round(p.currentValue), currency)})</div>` : ''}
             ${(p.valueHistory?.length) ? `<button class="val-i-btn" onclick="event.stopPropagation();showModal('val-history-modal')" title="${t('value_history_title')}">i</button>` : ''}
           </div>
-          ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(p.purchasePrice), currency)}</div></div>` : ''}
+          ${p.purchasePrice ? `<div class="value-tile"><div class="value-tile-label">${t('purchase_price')}</div><div class="value-tile-num" style="color:var(--muted)">${fmtCurrency(Math.round(myPurchasePrice), currency)}</div>${ownFrac < 1 ? `<div style="font-size:0.66rem;color:var(--muted);margin-top:2px">(${fmtCurrency(Math.round(p.purchasePrice), currency)})</div>` : ''}</div>` : ''}
           ${p.monthlyRent ? `<div class="value-tile"><div class="value-tile-label">${t('monthly_rent')}</div><div class="value-tile-num" style="color:var(--success)">${fmtOrig(p.monthlyRent, p.monthlyRentOriginal, p.monthlyRentCurrency, currency)}</div></div>` : ''}
-          ${(p.currentValue && p.purchasePrice) ? (() => {
-            const gain = p.currentValue - p.purchasePrice;
-            const gainPct = Math.round((gain / p.purchasePrice) * 100);
+          ${(myCurrentValue && myPurchasePrice) ? (() => {
+            const gain = myCurrentValue - myPurchasePrice;
+            const gainPct = Math.round((gain / myPurchasePrice) * 100);
             const col = gain >= 0 ? 'var(--success)' : 'var(--danger)';
             const sign = gain >= 0 ? '+' : '';
             return `<div class="value-tile">
@@ -1837,14 +1884,20 @@ function renderProperty() {
         })() : ''}
 
         <!-- Tenant -->
-        ${(tenant.name || tenant.startDate || tenant.endDate) ? `
         <div class="detail-card">
-          <div class="detail-card-title">🔑 ${t('tenant_info')}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="detail-card-title" style="margin-bottom:0">🔑 ${t('tenant_info')}</div>
+            ${!state.viewOnly ? `<button onclick="showModal('edit-prop-modal')" style="background:none;border:none;color:var(--accent-light);font-size:0.78rem;font-weight:600;cursor:pointer;padding:2px 0;opacity:0.85">✏️ ערוך</button>` : ''}
+          </div>
           ${row(t('tenant_name'), tenant.name)}
           ${tenant.phone ? row(t('phone'), `<a href="tel:${esc(tenant.phone)}" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-weight:700;letter-spacing:0.01em">📞 ${esc(tenant.phone)}</a>`) : ''}
           ${row(t('lease_start'), tenant.startDate ? new Date(tenant.startDate).toLocaleDateString('he-IL') : '')}
           ${row(t('lease_end'), tenant.endDate ? new Date(tenant.endDate).toLocaleDateString('he-IL') : '')}
-        </div>` : ''}
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            ${!state.viewOnly ? `<button onclick="uploadLeaseContract()" style="background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:0.78rem;font-weight:700;padding:5px 12px;cursor:pointer">📄 ${t('upload_contract')}</button>` : ''}
+            ${p.leaseContract?.url ? `<a href="${esc(p.leaseContract.url)}" target="_blank" rel="noopener" style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.4);border-radius:8px;color:rgba(16,185,129,0.95);font-size:0.78rem;font-weight:700;padding:5px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">⬇️ ${t('download_contract')}</a>` : ''}
+          </div>
+        </div>
 
         <!-- Unified rent panel -->
         ${renderInlineRent(p, country, currency)}
@@ -2053,7 +2106,7 @@ function renderProperty() {
         </div>
         <div class="form-group">
           <label>${t('ownership_pct')}</label>
-          <input type="number" id="ep-ownership" value="${p.ownershipPct!=null?Math.round(p.ownershipPct*100):100}" min="1" max="100" inputmode="numeric" />
+          ${_ownershipDropdown('ep-ownership-sel','ep-ownership-custom', p.ownershipPct)}
         </div>
 
         <div class="modal-title" style="font-size:0.82rem;color:var(--muted);margin-bottom:-4px">💰 ${t('financial_details_section')}</div>
@@ -3121,6 +3174,30 @@ async function uploadPropertyDoc() {
   input.click();
 }
 
+async function uploadLeaseContract() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf,.doc,.docx,image/*';
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+    if (!p) return;
+    toast(t('uploading_files'));
+    try {
+      const uploaded = await uploadFiles([input.files[0]], `${state.currentUser}/${p.id}/lease`);
+      if (uploaded?.length) {
+        p.leaseContract = { name: input.files[0].name, url: uploaded[0].url, uploadedAt: new Date().toISOString() };
+        await saveData();
+        haptic(8);
+        toast(`✓ ${t('contract_uploaded')}`);
+        render();
+      }
+    } catch { toast(t('error_upload')); }
+  };
+  input.click();
+}
+
 async function deletePropertyDoc(fileId) {
   if (!confirm(t('confirm_delete_doc'))) return;
   const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
@@ -3667,6 +3744,7 @@ async function submitAddProperty(currency) {
     monthlyRentOriginal: parseFloat(document.getElementById('np-rent').value) || undefined,
     monthlyRentCurrency: currency,
     purchaseDate: document.getElementById('np-date').value || undefined,
+    ownershipPct: _readOwnership('np-ownership-sel', 'np-ownership-custom'),
     rooms: npRooms > 0 ? npRooms : undefined,
     area:  npArea  > 0 ? npArea  : undefined,
     floor: npFloor !== '' && npFloor != null ? parseInt(npFloor) : undefined,
@@ -3725,7 +3803,7 @@ async function submitEditProperty(currency) {
   const rooms = parseFloat(getVal('ep-rooms')); if (rooms > 0) p.rooms = rooms;
   const area  = parseFloat(getVal('ep-area'));  if (area  > 0) p.area  = area;
   const floorV = getVal('ep-floor'); if (floorV !== '' && floorV != null) p.floor = parseInt(floorV);
-  const own = parseFloat(getVal('ep-ownership')); if (own > 0 && own <= 100) p.ownershipPct = own / 100;
+  p.ownershipPct = _readOwnership('ep-ownership-sel', 'ep-ownership-custom');
 
   // Financials
   const cv = toUSD(getVal('ep-value'));     if (cv)  p.currentValue  = cv;
