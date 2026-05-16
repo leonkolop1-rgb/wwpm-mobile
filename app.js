@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 87;
+const APP_VERSION = 88;
 
 const CHANGELOG = {
+  88: 'היסטוריית שכירות — חלונית עם פילטר שנה, עריכה ומחיקה של תשלומים',
   87: 'חלון פירוט שווי כסוף — טבלת נכסים עם מחיר רכישה, שווי נוכחי ורווח',
   86: 'תיקון פופ-אפ עדכון — מציג מה חדש בגרסה הנכונה אחרי העדכון',
   85: 'תרגום כפתור פירוט שווי + אישור יציאה — שואל לפני יציאה מהאפליקציה',
@@ -284,7 +285,7 @@ const STRINGS = {
     save_selected: 'שמור נבחרים', payment_history: 'היסטוריית תשלומים:',
     // Rent history page
     rent_history_title: 'היסטוריית שכירות', no_payments: 'אין תשלומים עדיין',
-    add_rent_payment: 'הוסף תשלום שכירות',
+    add_rent_payment: 'הוסף תשלום שכירות', all_time: 'כל הזמנים', edit_rent: 'ערוך',
     // Expenses page
     total_amount: 'סך הכל', no_items: 'אין פריטים', items_count: 'פריטים',
     add_expense: 'הוסף הוצאה', description: 'תיאור',
@@ -480,7 +481,7 @@ const STRINGS = {
     save_selected: 'Save selected', payment_history: 'Payment history:',
     // Rent history page
     rent_history_title: 'Rent History', no_payments: 'No payments yet',
-    add_rent_payment: 'Add rent payment',
+    add_rent_payment: 'Add rent payment', all_time: 'All Time', edit_rent: 'Edit',
     // Expenses page
     total_amount: 'Total', no_items: 'No items', items_count: 'items',
     add_expense: 'Add Expense', description: 'Description',
@@ -676,7 +677,7 @@ const STRINGS = {
     save_selected: 'Сохранить выбранные', payment_history: 'История платежей:',
     // Rent history page
     rent_history_title: 'История аренды', no_payments: 'Платежей пока нет',
-    add_rent_payment: 'Добавить платёж',
+    add_rent_payment: 'Добавить платёж', all_time: 'За всё время', edit_rent: 'Изменить',
     // Expenses page
     total_amount: 'Итого', no_items: 'Нет записей', items_count: 'записей',
     add_expense: 'Добавить расход', description: 'Описание',
@@ -1479,20 +1480,17 @@ function buildRentMonthGrid(country) {
 
 function renderInlineRent(p, country, currency) {
   const allPaid = [...(p.rentHistory || [])].filter(r => !r.autoFilled).sort((a, b) => b.month.localeCompare(a.month));
-  const total = allPaid.reduce((s, r) => s + (r.amount || 0), 0);
   const defaultAmount = p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '';
+  const monthlyDisplay = p.monthlyRent ? fmtCurrency(Math.round(p.monthlyRent), currency) : '—';
   return `
   <div class="detail-card" style="padding-bottom:14px">
-    <div class="detail-card-title">💵 ${t('rent_title')}</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      <div class="value-tile" style="flex:1;margin:0;padding:10px 12px">
-        <div class="value-tile-label">${t('total_received')}</div>
-        <div class="value-tile-num" style="color:var(--success);font-size:1.05rem">${fmtCurrency(Math.round(total), currency)}</div>
-      </div>
-      <div class="value-tile" style="flex:1;margin:0;padding:10px 12px">
-        <div class="value-tile-label">${t('num_payments')}</div>
-        <div class="value-tile-num" style="font-size:1.05rem">${allPaid.length}</div>
-      </div>
+    <div class="detail-card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>💵 ${t('rent_title')}</span>
+      ${allPaid.length ? `<button onclick="showRentHistoryModal()" style="background:none;border:none;color:var(--accent-light);font-size:0.78rem;font-weight:600;cursor:pointer;padding:2px 0;opacity:0.85">📋 ${t('payment_history')} ›</button>` : ''}
+    </div>
+    <div class="value-tile" style="margin:0 0 14px;padding:10px 14px">
+      <div class="value-tile-label">${t('monthly_rent')}</div>
+      <div class="value-tile-num" style="color:var(--success);font-size:1.15rem">${monthlyDisplay}</div>
     </div>
 
     ${!state.viewOnly ? `
@@ -1504,16 +1502,181 @@ function renderInlineRent(p, country, currency) {
       <span style="color:var(--text2);font-size:0.85rem">${CURRENCIES[currency]||currency}</span>
       <button onclick="submitBulkRent('${esc(currency)}')" class="btn-primary" style="flex:1;padding:9px 12px;font-size:0.88rem;white-space:nowrap">${t('save_selected')}</button>
     </div>` : ''}
-
-    ${allPaid.length ? `
-    <div style="font-size:0.8rem;color:var(--text2);margin-top:14px;margin-bottom:6px;font-weight:600;border-top:1px solid var(--border);padding-top:12px">${t('payment_history')}</div>
-    ${allPaid.map(r => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(99,102,241,0.07)">
-        <span style="color:var(--text2);font-size:0.85rem">${fmtMonthHeb(r.month)}</span>
-        <span style="color:var(--success);font-weight:700;font-family:var(--font-num);font-size:0.95rem">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
-        ${!state.viewOnly ? `<button onclick="deleteRentPayment('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:1rem;cursor:pointer;padding:2px 6px;opacity:0.6">🗑</button>` : ''}
-      </div>`).join('')}` : ''}
   </div>`;
+}
+
+function _buildRentHistoryList(p, currency, year) {
+  const items = [...(p.rentHistory || [])]
+    .filter(r => !r.autoFilled && (!year || year === 'all' || (r.month || '').startsWith(year)))
+    .sort((a, b) => b.month.localeCompare(a.month));
+  if (!items.length) return `<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:0.88rem">${t('no_payments')}</div>`;
+  return items.map(r => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid rgba(99,102,241,0.08)">
+      <span style="color:var(--text2);font-size:0.85rem;flex:1">${fmtMonthHeb(r.month)}</span>
+      <span style="color:var(--success);font-weight:700;font-family:var(--font-num);font-size:0.95rem">${fmtCurrency(Math.round(r.amount), r.paymentCurrency || currency)}</span>
+      ${!state.viewOnly ? `
+        <button onclick="showRentEditModal('${esc(r.id)}','${esc(r.paymentCurrency || currency)}')" style="background:none;border:none;color:var(--accent-light);font-size:0.78rem;font-weight:600;cursor:pointer;padding:4px 6px;opacity:0.8">✏️</button>
+        <button onclick="deleteRentPaymentFromModal('${esc(r.id)}')" style="background:none;border:none;color:var(--danger);font-size:0.9rem;cursor:pointer;padding:4px 6px;opacity:0.7">🗑</button>
+      ` : ''}
+    </div>`).join('');
+}
+
+function _refreshRentHistoryModal() {
+  const listEl = document.getElementById('_rh-list');
+  if (!listEl) return;
+  const year = document.getElementById('_rh-year')?.value || 'all';
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const currency = state.displayCurrency || 'USD';
+  listEl.innerHTML = _buildRentHistoryList(p, currency, year);
+  // update total
+  const totalEl = document.getElementById('_rh-total');
+  if (totalEl) {
+    const items = (p.rentHistory || []).filter(r => !r.autoFilled && (year === 'all' || (r.month || '').startsWith(year)));
+    totalEl.textContent = fmtCurrency(Math.round(items.reduce((s, r) => s + (r.amount || 0), 0)), currency);
+  }
+}
+
+function showRentHistoryModal() {
+  if (document.getElementById('_rh-overlay')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const currency = state.displayCurrency || 'USD';
+
+  const allItems = (p.rentHistory || []).filter(r => !r.autoFilled);
+  const years = [...new Set(allItems.map(r => (r.month || '').slice(0, 4)).filter(Boolean))].sort((a, b) => b - a);
+  const total = allItems.reduce((s, r) => s + (r.amount || 0), 0);
+
+  const overlay = document.createElement('div');
+  overlay.id = '_rh-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+    zIndex: '10000', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    padding: '0 0 0', opacity: '0', transition: 'opacity 0.22s ease',
+  });
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div id="_rh-card" style="
+      background: var(--surface, #12121e);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 24px 24px 0 0;
+      padding: 20px 18px 32px;
+      width: 100%; max-width: 480px;
+      max-height: 82dvh; display: flex; flex-direction: column;
+      box-shadow: 0 -8px 48px rgba(0,0,0,0.5);
+      transform: translateY(40px); transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+      direction: rtl;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:1rem;font-weight:800;color:var(--text)">📋 ${t('rent_history_title')}</div>
+        <button onclick="document.getElementById('_rh-overlay').remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:2px 6px">✕</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <select id="_rh-year" onchange="_refreshRentHistoryModal()" style="
+          flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+          color:var(--text);padding:8px 10px;font-size:0.88rem;
+        ">
+          <option value="all">${t('all_time')}</option>
+          ${years.map(y => `<option value="${y}">${y}</option>`).join('')}
+        </select>
+        <div style="font-size:0.78rem;color:var(--muted)">סה"כ: <span id="_rh-total" style="color:var(--success);font-weight:700">${fmtCurrency(Math.round(total), currency)}</span></div>
+      </div>
+
+      <div id="_rh-list" style="overflow-y:auto;flex:1;padding-left:2px">
+        ${_buildRentHistoryList(p, currency, 'all')}
+      </div>
+
+      <button onclick="document.getElementById('_rh-overlay').remove()" style="
+        width:100%;margin-top:16px;
+        background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);
+        border-radius:14px;padding:12px;
+        color:var(--accent-light);font-size:0.9rem;font-weight:700;cursor:pointer;
+        flex-shrink:0;
+      ">סגור</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    document.getElementById('_rh-card').style.transform = 'translateY(0)';
+  });
+}
+
+function showRentEditModal(entryId, entryCurrency) {
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const entry = (p.rentHistory || []).find(r => r.id === entryId);
+  if (!entry) return;
+  const cur = entryCurrency || state.displayCurrency || 'USD';
+  const displayAmount = Math.round((entry.amount || 0) * (rates[cur] || 1));
+
+  const existing = document.getElementById('_rh-edit-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = '_rh-edit-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+    zIndex: '10001', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px 16px',
+  });
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div style="
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 22px 18px; width: 100%; max-width: 340px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5); direction: rtl;
+    ">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:14px">✏️ ${t('edit_rent')} — ${fmtMonthHeb(entry.month)}</div>
+      <div class="form-group">
+        <label>${t('amount_label')} (${CURRENCIES[cur]||cur})</label>
+        <input id="_rh-edit-amount" type="number" inputmode="numeric" value="${displayAmount}"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:1rem;font-family:var(--font-num);text-align:right;box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="document.getElementById('_rh-edit-overlay').remove()" class="btn-secondary" style="flex:1">${t('cancel')}</button>
+        <button onclick="confirmEditRent('${esc(entryId)}','${esc(cur)}')" class="btn-primary" style="flex:2">${t('save')}</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+async function confirmEditRent(entryId, entryCurrency) {
+  const newDisplay = parseFloat(document.getElementById('_rh-edit-amount')?.value);
+  if (!newDisplay || newDisplay <= 0) { toast(t('fill_amount_valid')); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const entry = (p.rentHistory || []).find(r => r.id === entryId);
+  if (!entry) return;
+  entry.amount = newDisplay / (rates[entryCurrency] || 1);
+  entry.paymentCurrency = entryCurrency;
+  document.getElementById('_rh-edit-overlay')?.remove();
+  toast(t('saving'));
+  await saveData();
+  toast(`✓ ${t('rent_saved')}`);
+  _refreshRentHistoryModal();
+}
+
+async function deleteRentPaymentFromModal(paymentId) {
+  if (!confirm(t('confirm_delete_rent'))) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  p.rentHistory = (p.rentHistory || []).filter(r => r.id !== paymentId);
+  toast(t('saving'));
+  await saveData();
+  toast(`✓ ${t('deleted')}`);
+  _refreshRentHistoryModal();
 }
 
 async function submitBulkRent(currency) {
