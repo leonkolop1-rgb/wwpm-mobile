@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 90;
+const APP_VERSION = 91;
 
 const CHANGELOG = {
+  91: 'מחשבון תשואה — תשואה ברוטו ונטו בזמן אמת עם הסבר על החישוב',
   90: 'פרטי שוכר + חוזה + דרופ דאון בעלות + שווי לפי אחוז + תשואה ללא USD',
   89: 'תיקון מטבע שכירות — מוצג תמיד בסכום המקורי שהוגדר, ללא תלות בשער',
   88: 'היסטוריית שכירות — חלונית עם פילטר שנה, עריכה ומחיקה של תשלומים',
@@ -294,6 +295,12 @@ const STRINGS = {
     expense_desc_ph: 'תיאור ההוצאה', date_label: 'תאריך',
     // Analytics
     analytics_header: 'אנליטיקה', total_summary: 'סיכום כולל',
+    yield_calc_title: 'מחשבון תשואה', yield_calc_price: 'מחיר רכישה', yield_calc_rent: 'שכירות חודשית',
+    yield_calc_expenses: 'הוצאות שנתיות (אופציונלי)', yield_calc_mortgage: 'משכנתא חודשית (אופציונלי)',
+    yield_gross: 'תשואה ברוטו', yield_net: 'תשואה נטו',
+    yield_explain_gross: 'שכירות שנתית ÷ מחיר רכישה × 100',
+    yield_explain_net: '(שכירות שנתית − הוצאות − משכנתא שנתית) ÷ מחיר רכישה × 100',
+    yield_fill_hint: 'מלא מחיר רכישה ושכירות חודשית',
     props_in: 'נכסים ב-', countries_count_label: 'מדינות',
     by_country: 'לפי מדינה', props_by_value: 'נכסים לפי שווי', all_countries_filter: 'כל המדינות',
     current_assets_value: 'שווי נכסים כיום', total_invested_label: 'סך ההשקעה',
@@ -492,6 +499,12 @@ const STRINGS = {
     expense_desc_ph: 'Expense description', date_label: 'Date',
     // Analytics
     analytics_header: 'Analytics', total_summary: 'Total summary',
+    yield_calc_title: 'Yield Calculator', yield_calc_price: 'Purchase price', yield_calc_rent: 'Monthly rent',
+    yield_calc_expenses: 'Annual expenses (optional)', yield_calc_mortgage: 'Monthly mortgage (optional)',
+    yield_gross: 'Gross yield', yield_net: 'Net yield',
+    yield_explain_gross: 'Annual rent ÷ Purchase price × 100',
+    yield_explain_net: '(Annual rent − Expenses − Annual mortgage) ÷ Purchase price × 100',
+    yield_fill_hint: 'Enter purchase price and monthly rent',
     props_in: 'properties in', countries_count_label: 'countries',
     by_country: 'By country', props_by_value: 'Properties by value', all_countries_filter: 'All countries',
     current_assets_value: 'Current assets value', total_invested_label: 'Total invested',
@@ -690,6 +703,12 @@ const STRINGS = {
     expense_desc_ph: 'Описание расхода', date_label: 'Дата',
     // Analytics
     analytics_header: 'Аналитика', total_summary: 'Общий итог',
+    yield_calc_title: 'Калькулятор доходности', yield_calc_price: 'Цена покупки', yield_calc_rent: 'Аренда в месяц',
+    yield_calc_expenses: 'Годовые расходы (необязательно)', yield_calc_mortgage: 'Ипотека в месяц (необязательно)',
+    yield_gross: 'Валовая доходность', yield_net: 'Чистая доходность',
+    yield_explain_gross: 'Годовая аренда ÷ Цена покупки × 100',
+    yield_explain_net: '(Годовая аренда − Расходы − Годовая ипотека) ÷ Цена покупки × 100',
+    yield_fill_hint: 'Введите цену покупки и аренду',
     props_in: 'объектов в', countries_count_label: 'странах',
     by_country: 'По странам', props_by_value: 'Объекты по стоимости', all_countries_filter: 'Все страны',
     current_assets_value: 'Текущая стоимость', total_invested_label: 'Всего инвестировано',
@@ -1161,6 +1180,7 @@ function renderHome() {
         <div class="top-bar-actions">
           ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
           <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
+          <button class="icon-btn" onclick="showYieldCalculator()" title="${t('yield_calc_title')}">🧮</button>
           <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
           ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
           ${renderFeedbackBtn()}
@@ -2376,7 +2396,7 @@ function renderAnalytics() {
       <header class="top-bar">
         <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
         <div class="top-bar-title">📊 ${t('analytics_header')}</div>
-        <div class="top-bar-actions">${renderLangDropdown('lang-a', true)}<button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>${renderFeedbackBtn()}${renderCurrencySelector()}</div>
+        <div class="top-bar-actions">${renderLangDropdown('lang-a', true)}<button class="icon-btn" onclick="showYieldCalculator()" title="${t('yield_calc_title')}">🧮</button><button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>${renderFeedbackBtn()}${renderCurrencySelector()}</div>
       </header>
       <div class="content">
         ${renderRateBar()}
@@ -3943,6 +3963,108 @@ function goToAnalytics() {
   state.view = 'analytics';
   render();
   window.scrollTo(0, 0);
+}
+
+function _calcYield() {
+  const price    = parseFloat(document.getElementById('_yc-price')?.value)    || 0;
+  const rent     = parseFloat(document.getElementById('_yc-rent')?.value)     || 0;
+  const expenses = parseFloat(document.getElementById('_yc-expenses')?.value) || 0;
+  const mortgage = parseFloat(document.getElementById('_yc-mortgage')?.value) || 0;
+  const grossEl  = document.getElementById('_yc-gross');
+  const netEl    = document.getElementById('_yc-net');
+  const hintEl   = document.getElementById('_yc-hint');
+  if (!price || !rent) {
+    if (grossEl) { grossEl.textContent = '—'; grossEl.style.color = 'var(--muted)'; }
+    if (netEl)   { netEl.textContent   = '—'; netEl.style.color   = 'var(--muted)'; }
+    if (hintEl)  hintEl.style.display = 'block';
+    return;
+  }
+  if (hintEl) hintEl.style.display = 'none';
+  const annualRent     = rent * 12;
+  const annualMortgage = mortgage * 12;
+  const gross = (annualRent / price) * 100;
+  const net   = ((annualRent - expenses - annualMortgage) / price) * 100;
+  if (grossEl) { grossEl.textContent = gross.toFixed(2) + '%'; grossEl.style.color = gross > 0 ? 'rgba(16,185,129,0.95)' : 'var(--danger)'; }
+  if (netEl)   { netEl.textContent   = net.toFixed(2)   + '%'; netEl.style.color   = net   > 0 ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)'; }
+}
+
+function showYieldCalculator() {
+  if (document.getElementById('_yc-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = '_yc-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+    zIndex: '10000', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    padding: '0', opacity: '0', transition: 'opacity 0.22s ease',
+  });
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  const inp = (id, label, ph, hint) => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px">${label}</div>
+      <input id="${id}" type="number" inputmode="decimal" placeholder="${ph}" oninput="_calcYield()"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+               color:var(--text);padding:10px 13px;font-size:1rem;font-family:var(--font-num);
+               text-align:right;box-sizing:border-box">
+      ${hint ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-right:2px">${hint}</div>` : ''}
+    </div>`;
+
+  overlay.innerHTML = `
+    <div id="_yc-card" style="
+      background: var(--surface, #12121e);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 24px 24px 0 0;
+      padding: 22px 18px 36px;
+      width: 100%; max-width: 480px;
+      max-height: 90dvh; overflow-y: auto;
+      box-shadow: 0 -8px 48px rgba(0,0,0,0.5);
+      transform: translateY(40px); transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+      direction: rtl;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:1.05rem;font-weight:800;color:var(--text)">🧮 ${t('yield_calc_title')}</div>
+        <button onclick="document.getElementById('_yc-overlay').remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:2px 6px">✕</button>
+      </div>
+
+      <!-- Explanation box -->
+      <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:0.78rem;color:var(--text2);line-height:1.6">
+        <div style="margin-bottom:5px"><strong style="color:var(--accent-light)">${t('yield_gross')}:</strong> ${t('yield_explain_gross')}</div>
+        <div><strong style="color:rgba(16,185,129,0.9)">${t('yield_net')}:</strong> ${t('yield_explain_net')}</div>
+      </div>
+
+      ${inp('_yc-price', t('yield_calc_price'), '1,000,000', '')}
+      ${inp('_yc-rent', t('yield_calc_rent'), '5,000', '')}
+      ${inp('_yc-expenses', t('yield_calc_expenses'), '0', '')}
+      ${inp('_yc-mortgage', t('yield_calc_mortgage'), '0', '')}
+
+      <!-- Results -->
+      <div style="background:rgba(8,16,48,0.6);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px 18px;margin-top:6px">
+        <div id="_yc-hint" style="font-size:0.8rem;color:var(--muted);text-align:center;padding:4px 0">${t('yield_fill_hint')}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:600">${t('yield_gross')}</span>
+          <span id="_yc-gross" style="font-size:1.4rem;font-weight:800;color:var(--muted);font-family:var(--font-num)">—</span>
+        </div>
+        <div style="height:1px;background:rgba(99,102,241,0.1);margin-bottom:10px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:600">${t('yield_net')}</span>
+          <span id="_yc-net" style="font-size:1.4rem;font-weight:800;color:var(--muted);font-family:var(--font-num)">—</span>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('_yc-overlay').remove()" style="
+        width:100%;margin-top:16px;
+        background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);
+        border-radius:14px;padding:12px;
+        color:var(--accent-light);font-size:0.9rem;font-weight:700;cursor:pointer;
+      ">סגור</button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    document.getElementById('_yc-card').style.transform = 'translateY(0)';
+  });
 }
 
 function showValueBreakdown() {
