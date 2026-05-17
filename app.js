@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 91;
+const APP_VERSION = 92;
 
 const CHANGELOG = {
+  92: 'מחשבון תשואה — דרופדאון מטבע, כפתור חשב וריבוע תוצאות בסגול',
   91: 'מחשבון תשואה — תשואה ברוטו ונטו בזמן אמת עם הסבר על החישוב',
   90: 'פרטי שוכר + חוזה + דרופ דאון בעלות + שווי לפי אחוז + תשואה ללא USD',
   89: 'תיקון מטבע שכירות — מוצג תמיד בסכום המקורי שהוגדר, ללא תלות בשער',
@@ -300,7 +301,7 @@ const STRINGS = {
     yield_gross: 'תשואה ברוטו', yield_net: 'תשואה נטו',
     yield_explain_gross: 'שכירות שנתית ÷ מחיר רכישה × 100',
     yield_explain_net: '(שכירות שנתית − הוצאות − משכנתא שנתית) ÷ מחיר רכישה × 100',
-    yield_fill_hint: 'מלא מחיר רכישה ושכירות חודשית',
+    yield_fill_hint: 'מלא מחיר רכישה ושכירות חודשית', yield_calc_btn: 'חשב',
     props_in: 'נכסים ב-', countries_count_label: 'מדינות',
     by_country: 'לפי מדינה', props_by_value: 'נכסים לפי שווי', all_countries_filter: 'כל המדינות',
     current_assets_value: 'שווי נכסים כיום', total_invested_label: 'סך ההשקעה',
@@ -504,7 +505,7 @@ const STRINGS = {
     yield_gross: 'Gross yield', yield_net: 'Net yield',
     yield_explain_gross: 'Annual rent ÷ Purchase price × 100',
     yield_explain_net: '(Annual rent − Expenses − Annual mortgage) ÷ Purchase price × 100',
-    yield_fill_hint: 'Enter purchase price and monthly rent',
+    yield_fill_hint: 'Enter purchase price and monthly rent', yield_calc_btn: 'Calculate',
     props_in: 'properties in', countries_count_label: 'countries',
     by_country: 'By country', props_by_value: 'Properties by value', all_countries_filter: 'All countries',
     current_assets_value: 'Current assets value', total_invested_label: 'Total invested',
@@ -708,7 +709,7 @@ const STRINGS = {
     yield_gross: 'Валовая доходность', yield_net: 'Чистая доходность',
     yield_explain_gross: 'Годовая аренда ÷ Цена покупки × 100',
     yield_explain_net: '(Годовая аренда − Расходы − Годовая ипотека) ÷ Цена покупки × 100',
-    yield_fill_hint: 'Введите цену покупки и аренду',
+    yield_fill_hint: 'Введите цену покупки и аренду', yield_calc_btn: 'Рассчитать',
     props_in: 'объектов в', countries_count_label: 'странах',
     by_country: 'По странам', props_by_value: 'Объекты по стоимости', all_countries_filter: 'Все страны',
     current_assets_value: 'Текущая стоимость', total_invested_label: 'Всего инвестировано',
@@ -3973,10 +3974,12 @@ function _calcYield() {
   const grossEl  = document.getElementById('_yc-gross');
   const netEl    = document.getElementById('_yc-net');
   const hintEl   = document.getElementById('_yc-hint');
+  const resBox   = document.getElementById('_yc-results');
   if (!price || !rent) {
     if (grossEl) { grossEl.textContent = '—'; grossEl.style.color = 'var(--muted)'; }
     if (netEl)   { netEl.textContent   = '—'; netEl.style.color   = 'var(--muted)'; }
     if (hintEl)  hintEl.style.display = 'block';
+    if (resBox)  resBox.style.borderColor = 'rgba(99,102,241,0.25)';
     return;
   }
   if (hintEl) hintEl.style.display = 'none';
@@ -3986,6 +3989,7 @@ function _calcYield() {
   const net   = ((annualRent - expenses - annualMortgage) / price) * 100;
   if (grossEl) { grossEl.textContent = gross.toFixed(2) + '%'; grossEl.style.color = gross > 0 ? 'rgba(16,185,129,0.95)' : 'var(--danger)'; }
   if (netEl)   { netEl.textContent   = net.toFixed(2)   + '%'; netEl.style.color   = net   > 0 ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)'; }
+  if (resBox)  resBox.style.borderColor = 'rgba(99,102,241,0.55)';
 }
 
 function showYieldCalculator() {
@@ -4000,14 +4004,16 @@ function showYieldCalculator() {
   });
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
 
-  const inp = (id, label, ph, hint) => `
+  const currencyOpts = Object.entries(CURRENCIES)
+    .map(([code, sym]) => `<option value="${code}">${sym} ${code}</option>`).join('');
+
+  const inp = (id, label, ph) => `
     <div style="margin-bottom:12px">
       <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px">${label}</div>
-      <input id="${id}" type="number" inputmode="decimal" placeholder="${ph}" oninput="_calcYield()"
+      <input id="${id}" type="number" inputmode="decimal" placeholder="${ph}"
         style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
                color:var(--text);padding:10px 13px;font-size:1rem;font-family:var(--font-num);
                text-align:right;box-sizing:border-box">
-      ${hint ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-right:2px">${hint}</div>` : ''}
     </div>`;
 
   overlay.innerHTML = `
@@ -4033,19 +4039,37 @@ function showYieldCalculator() {
         <div><strong style="color:rgba(16,185,129,0.9)">${t('yield_net')}:</strong> ${t('yield_explain_net')}</div>
       </div>
 
-      ${inp('_yc-price', t('yield_calc_price'), '1,000,000', '')}
-      ${inp('_yc-rent', t('yield_calc_rent'), '5,000', '')}
-      ${inp('_yc-expenses', t('yield_calc_expenses'), '0', '')}
-      ${inp('_yc-mortgage', t('yield_calc_mortgage'), '0', '')}
+      <!-- Currency selector -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px">${t('currency')}</div>
+        <select id="_yc-currency" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 13px;font-size:1rem;font-family:var(--font-num);text-align:right;box-sizing:border-box;cursor:pointer">
+          ${currencyOpts}
+        </select>
+      </div>
+
+      ${inp('_yc-price', t('yield_calc_price'), '1,000,000')}
+      ${inp('_yc-rent', t('yield_calc_rent'), '5,000')}
+      ${inp('_yc-expenses', t('yield_calc_expenses'), '0')}
+      ${inp('_yc-mortgage', t('yield_calc_mortgage'), '0')}
+
+      <!-- Calc button -->
+      <button onclick="_calcYield()" style="
+        width:100%;margin-bottom:14px;
+        background:linear-gradient(135deg,rgba(99,102,241,0.85),rgba(139,92,246,0.85));
+        border:none;border-radius:14px;padding:13px;
+        color:#fff;font-size:1rem;font-weight:800;cursor:pointer;
+        box-shadow:0 4px 20px rgba(99,102,241,0.35);
+        transition:opacity 0.15s;
+      " onmousedown="this.style.opacity='0.8'" onmouseup="this.style.opacity='1'" ontouchstart="this.style.opacity='0.8'" ontouchend="this.style.opacity='1'">${t('yield_calc_btn')}</button>
 
       <!-- Results -->
-      <div style="background:rgba(8,16,48,0.6);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:16px 18px;margin-top:6px">
+      <div id="_yc-results" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:16px;padding:16px 18px;transition:border-color 0.3s">
         <div id="_yc-hint" style="font-size:0.8rem;color:var(--muted);text-align:center;padding:4px 0">${t('yield_fill_hint')}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span style="font-size:0.82rem;color:var(--muted);font-weight:600">${t('yield_gross')}</span>
           <span id="_yc-gross" style="font-size:1.4rem;font-weight:800;color:var(--muted);font-family:var(--font-num)">—</span>
         </div>
-        <div style="height:1px;background:rgba(99,102,241,0.1);margin-bottom:10px"></div>
+        <div style="height:1px;background:rgba(99,102,241,0.18);margin-bottom:10px"></div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:0.82rem;color:var(--muted);font-weight:600">${t('yield_net')}</span>
           <span id="_yc-net" style="font-size:1.4rem;font-weight:800;color:var(--muted);font-family:var(--font-num)">—</span>
@@ -4064,6 +4088,9 @@ function showYieldCalculator() {
   requestAnimationFrame(() => {
     overlay.style.opacity = '1';
     document.getElementById('_yc-card').style.transform = 'translateY(0)';
+    // pre-select display currency
+    const sel = document.getElementById('_yc-currency');
+    if (sel && state.displayCurrency) sel.value = state.displayCurrency;
   });
 }
 
