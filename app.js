@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 96;
+const APP_VERSION = 97;
 
 const CHANGELOG = {
+  97: 'כותרת עמוד נכס — שורה 1 שם+מדינה, שורה 2 כל הכפתורים',
   96: 'הוצאות מהירות עם קבצים + אלבום תמונות/וידאו עד 10 קבצים לכל נכס',
   95: 'תיקון: תפריט 2 שורות inline + כפתור הזן שכ"ד מנווט לנכס ופותח טופס',
   94: 'תפריט עליון בשתי שורות — כפתורים נוחים יותר ופחות צפופים',
@@ -1837,16 +1838,23 @@ function renderProperty() {
 
   return `
     <div class="page">
-      <header class="top-bar">
-        <button class="back-btn" onclick="goBack()">‹ ${t('back')}</button>
-        <div class="top-bar-title" style="font-size:0.95rem">${esc(p.name || p.address || '—')}</div>
-        <div class="top-bar-actions">
-          ${renderLangDropdown('lang-p', true)}
-          ${renderCurrencySelector()}
-          ${renderFeedbackBtn()}
-          ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
-          ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
-          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
+      <header class="top-bar" style="flex-direction:column;align-items:stretch;height:auto;padding:env(safe-area-inset-top) 4px 0">
+        <div style="display:flex;align-items:center;height:50px;gap:6px">
+          <button class="back-btn" onclick="goBack()" style="flex-shrink:0">‹ ${t('back')}</button>
+          <div style="flex:1;min-width:0;overflow:hidden">
+            <div style="font-size:0.95rem;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name || p.address || '—')}</div>
+            ${country?.name ? `<div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-top:1px">${getCountryFlagEmoji(country.name)} ${esc(country.name)}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;height:42px;border-top:1px solid rgba(99,102,241,0.08)">
+          <div class="top-bar-actions" style="gap:2px">
+            ${renderLangDropdown('lang-p', true)}
+            ${renderCurrencySelector()}
+            ${renderFeedbackBtn()}
+            ${!state.viewOnly ? `<button class="icon-btn" onclick="uploadCoverPhoto()" title="${t('prop_photo')}">📷</button>` : ''}
+            ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('edit-prop-modal')" style="font-size:1.2rem">✏️</button>` : ''}
+            <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
+          </div>
         </div>
       </header>
 
