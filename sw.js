@@ -1,4 +1,4 @@
-const CACHE = 'wwpm-v99';
+const CACHE = 'wwpm-v100';
 const ASSETS = [
   '/wwpm-mobile/',
   '/wwpm-mobile/index.html',
@@ -16,8 +16,7 @@ self.addEventListener('install', e => {
             .then(r => { if (r.ok) return c.put(url, r); })
         )
       )
-    )
-    // no skipWaiting() here — app shows pink button; user or auto-apply triggers it
+    ).then(() => self.skipWaiting())
   );
 });
 
