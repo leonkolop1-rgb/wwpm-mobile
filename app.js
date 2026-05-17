@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 98;
+const APP_VERSION = 99;
 
 const CHANGELOG = {
+  99: 'עריכת הערות נכס — כפתור ערוך, מודל textarea, שמירה ישירה',
   98: 'גרף השקעה מול שווי — מספרים בתוך/ליד כל בר בגרף',
   97: 'כותרת עמוד נכס — שורה 1 שם+מדינה, שורה 2 כל הכפתורים',
   96: 'הוצאות מהירות עם קבצים + אלבום תמונות/וידאו עד 10 קבצים לכל נכס',
@@ -285,7 +286,7 @@ const STRINGS = {
     improvements: 'שיפורים', one_time_expenses: 'הוצאות חד-פעמיות',
     taxes: 'מיסים', brokerage: 'תיווך',
     // Notes & Files
-    notes: 'הערות', notes_ph: 'הערות על הנכס...',
+    notes: 'הערות', notes_ph: 'הערות על הנכס...', no_notes: 'אין הערות — לחץ ערוך להוספה',
     property_docs: 'מסמכי הנכס', add_doc: 'מסמך', no_docs: 'אין מסמכים מצורפים',
     prop_docs_label: 'מסמכי נכס', expense_docs_label: 'מסמכי הוצאות ומשכנתאות',
     add_file: 'קובץ',
@@ -490,7 +491,7 @@ const STRINGS = {
     improvements: 'Improvements', one_time_expenses: 'One-time expenses',
     taxes: 'Taxes', brokerage: 'Brokerage',
     // Notes & Files
-    notes: 'Notes', notes_ph: 'Notes about the property...',
+    notes: 'Notes', notes_ph: 'Notes about the property...', no_notes: 'No notes — tap Edit to add',
     property_docs: 'Property Documents', add_doc: 'Document', no_docs: 'No documents attached',
     prop_docs_label: 'Property docs', expense_docs_label: 'Expense & mortgage docs',
     add_file: 'File',
@@ -695,7 +696,7 @@ const STRINGS = {
     improvements: 'Улучшения', one_time_expenses: 'Единоврем. расходы',
     taxes: 'Налоги', brokerage: 'Брокеридж',
     // Notes & Files
-    notes: 'Заметки', notes_ph: 'Заметки об объекте...',
+    notes: 'Заметки', notes_ph: 'Заметки об объекте...', no_notes: 'Нет заметок — нажмите Изменить',
     property_docs: 'Документы объекта', add_doc: 'Документ', no_docs: 'Документов нет',
     prop_docs_label: 'Документы объекта', expense_docs_label: 'Документы расходов',
     add_file: 'Файл',
@@ -2019,11 +2020,15 @@ function renderProperty() {
         })()}
 
         <!-- Notes -->
-        ${p.notes ? `
         <div class="detail-card">
-          <div class="detail-card-title">📝 ${t('notes')}</div>
-          <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
-        </div>` : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="detail-card-title" style="margin-bottom:0">📝 ${t('notes')}</div>
+            ${!state.viewOnly ? `<button onclick="showModal('notes-edit-modal')" style="background:none;border:none;color:var(--accent-light);font-size:0.78rem;font-weight:600;cursor:pointer;padding:2px 0;opacity:0.85">✏️ ${t('edit')}</button>` : ''}
+          </div>
+          ${p.notes
+            ? `<div style="font-size:0.88rem;color:var(--text2);line-height:1.6;white-space:pre-wrap">${esc(p.notes)}</div>`
+            : `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:8px 0">${t('no_notes')}</div>`}
+        </div>
 
         <!-- Album -->
         <div class="detail-card">
@@ -2131,6 +2136,19 @@ function renderProperty() {
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('add-mort-modal')">${t('cancel')}</button>
           <button class="btn-primary" style="flex:2" onclick="submitAddMortgage('${esc(currency)}')">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="notes-edit-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('notes-edit-modal')">
+      <div class="modal-card">
+        <div class="modal-title">📝 ${t('notes')}</div>
+        <div class="form-group">
+          <textarea id="notes-edit-ta" rows="6" placeholder="${t('notes_ph')}" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:1rem;padding:13px 14px;outline:none;width:100%;resize:none;font-family:inherit;direction:rtl;box-sizing:border-box;line-height:1.6">${esc(p.notes||'')}</textarea>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('notes-edit-modal')">${t('cancel')}</button>
+          <button class="btn-primary" style="flex:2" onclick="submitEditNotes()">${t('save')}</button>
         </div>
       </div>
     </div>
@@ -3920,6 +3938,19 @@ async function deleteExpenseItem(catKey, itemId) {
   toast(t('saving'));
   await saveData();
   toast(`✓ ${t('deleted')}`);
+  render();
+}
+
+async function submitEditNotes() {
+  const notes = (document.getElementById('notes-edit-ta')?.value || '').trim();
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  p.notes = notes;
+  closeModal('notes-edit-modal');
+  toast(t('saving'));
+  await saveData();
+  toast(`✓ ${t('saved')}`);
   render();
 }
 
