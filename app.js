@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 95;
+const APP_VERSION = 96;
 
 const CHANGELOG = {
+  96: 'הוצאות מהירות עם קבצים + אלבום תמונות/וידאו עד 10 קבצים לכל נכס',
   95: 'תיקון: תפריט 2 שורות inline + כפתור הזן שכ"ד מנווט לנכס ופותח טופס',
   94: 'תפריט עליון בשתי שורות — כפתורים נוחים יותר ופחות צפופים',
   93: 'כפתור הזן שכ"ד — כפתור צהוב ישיר להזנת שכירות חסרה מהעמוד הראשי',
@@ -342,6 +343,7 @@ const STRINGS = {
     update_now: 'עדכן עכשיו', whats_new: 'מה חדש:', version_label: 'גרסה',
     // Toast/confirm
     uploading_photo: 'מעלה תמונה...', photo_updated: 'תמונה עודכנה',
+    album_title: 'אלבום', album_upload: 'העלה', album_open: 'פתח אלבום', album_empty: 'אין תמונות עדיין', album_max: 'מקסימום 10 קבצים', confirm_delete_album: 'למחוק קובץ זה מהאלבום?', expense_cat_label: 'קטגוריה', expense_saved: 'הוצאה נשמרה',
     saving: 'שומר...', rent_saved: 'שכ"ד נרשם', error_save: 'שגיאה בשמירה',
     please_select_country: 'נא לבחור מדינה', please_enter_country: 'נא להזין שם מדינה',
     country_added: 'מדינה נוספה', country_deleted: 'מדינה נמחקה', deleted: 'נמחק',
@@ -546,6 +548,7 @@ const STRINGS = {
     update_now: 'Update now', whats_new: "What's new:", version_label: 'Version',
     // Toast/confirm
     uploading_photo: 'Uploading photo...', photo_updated: 'Photo updated',
+    album_title: 'Album', album_upload: 'Upload', album_open: 'Open Album', album_empty: 'No photos yet', album_max: 'Max 10 files', confirm_delete_album: 'Delete this file from album?', expense_cat_label: 'Category', expense_saved: 'Expense saved',
     saving: 'Saving...', rent_saved: 'Rent saved', error_save: 'Save error',
     please_select_country: 'Please select a country', please_enter_country: 'Please enter country name',
     country_added: 'Country added', country_deleted: 'Country deleted', deleted: 'Deleted',
@@ -750,6 +753,7 @@ const STRINGS = {
     update_now: 'Обновить', whats_new: 'Что нового:', version_label: 'Версия',
     // Toast/confirm
     uploading_photo: 'Загрузка фото...', photo_updated: 'Фото обновлено',
+    album_title: 'Альбом', album_upload: 'Загрузить', album_open: 'Открыть альбом', album_empty: 'Нет фото', album_max: 'Максимум 10 файлов', confirm_delete_album: 'Удалить этот файл из альбома?', expense_cat_label: 'Категория', expense_saved: 'Расход сохранён',
     saving: 'Сохранение...', rent_saved: 'Аренда сохранена', error_save: 'Ошибка сохранения',
     please_select_country: 'Выберите страну', please_enter_country: 'Введите название страны',
     country_added: 'Страна добавлена', country_deleted: 'Страна удалена', deleted: 'Удалено',
@@ -1805,6 +1809,9 @@ function renderProperty() {
   const totalExpenses = [...maintenance, ...improvements, ...oneTime, ...taxPayments, ...brokerages]
     .reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
+  const album = p.album || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   // Mortgages — use endDate directly
   const mortgages = p.mortgages || [];
   const today = new Date();
@@ -1973,15 +1980,20 @@ function renderProperty() {
         })()}
 
         <!-- Expense categories -->
-        ${(maintenance.length || improvements.length || oneTime.length || taxPayments.length || brokerages.length) ? `
         <div class="detail-card" style="padding:0;overflow:hidden">
-          <div class="detail-card-title" style="padding:12px 16px 8px">📋 ${t('expense_categories')}</div>
-          ${maintenance.length ? `<div class="expense-cat-row" onclick="goToExpenses('maintenance')"><span>🔧 ${t('maintenance')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(maintenance.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
-          ${improvements.length ? `<div class="expense-cat-row" onclick="goToExpenses('improvements')"><span>🏗️ ${t('improvements')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(improvements.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
-          ${oneTime.length ? `<div class="expense-cat-row" onclick="goToExpenses('oneTime')"><span>💸 ${t('one_time_expenses')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(oneTime.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
-          ${taxPayments.length ? `<div class="expense-cat-row" onclick="goToExpenses('tax')"><span>🏛️ ${t('taxes')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(taxPayments.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
-          ${brokerages.length ? `<div class="expense-cat-row" onclick="goToExpenses('brokerage')"><span>🤝 ${t('brokerage')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(brokerages.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
-        </div>` : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px">
+            <div class="detail-card-title" style="margin-bottom:0">📋 ${t('expense_categories')}</div>
+            ${!state.viewOnly ? `<button onclick="showModal('quick-exp-modal')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:rgba(239,68,68,0.85);font-size:0.78rem;font-weight:700;padding:5px 12px;cursor:pointer">＋ ${t('add_expense')}</button>` : ''}
+          </div>
+          ${!maintenance.length && !improvements.length && !oneTime.length && !taxPayments.length && !brokerages.length
+            ? `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:12px 16px 14px">${t('no_items')}</div>`
+            : `${maintenance.length  ? `<div class="expense-cat-row" onclick="goToExpenses('maintenance')"><span>🔧 ${t('maintenance')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(maintenance.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+               ${improvements.length ? `<div class="expense-cat-row" onclick="goToExpenses('improvements')"><span>🏗️ ${t('improvements')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(improvements.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+               ${oneTime.length      ? `<div class="expense-cat-row" onclick="goToExpenses('oneTime')"><span>💸 ${t('one_time_expenses')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(oneTime.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+               ${taxPayments.length  ? `<div class="expense-cat-row" onclick="goToExpenses('tax')"><span>🏛️ ${t('taxes')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(taxPayments.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}
+               ${brokerages.length   ? `<div class="expense-cat-row" onclick="goToExpenses('brokerage')"><span>🤝 ${t('brokerage')}</span><span class="expense-cat-right"><span style="color:var(--danger)">${fmtCurrency(Math.round(brokerages.reduce((s,e)=>s+(+e.amount||0),0)), currency)}</span><span class="chevron">›</span></span></div>` : ''}`
+          }
+        </div>
 
 
         <!-- Lease countdown -->
@@ -2003,6 +2015,28 @@ function renderProperty() {
           <div class="detail-card-title">📝 ${t('notes')}</div>
           <div style="font-size:0.88rem;color:var(--muted);line-height:1.6">${esc(p.notes)}</div>
         </div>` : ''}
+
+        <!-- Album -->
+        <div class="detail-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="detail-card-title" style="margin-bottom:0">🖼️ ${t('album_title')}${album.length ? ` (${album.length}/10)` : ''}</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              ${!state.viewOnly && album.length < 10 ? `<button onclick="uploadAlbumMedia()" style="background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-size:0.78rem;font-weight:700;padding:5px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent">⬆️ ${t('album_upload')}</button>` : ''}
+              ${album.length > 0 ? `<button onclick="showAlbum(0)" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:8px;color:var(--accent-light);font-size:0.78rem;font-weight:700;padding:5px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent">📷 ${t('album_open')}</button>` : ''}
+            </div>
+          </div>
+          ${album.length === 0
+            ? `<div style="font-size:0.82rem;color:var(--muted);text-align:center;padding:12px 0">${t('album_empty')}</div>`
+            : `<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">
+                ${album.map((item, i) => `
+                  <div onclick="showAlbum(${i})" style="flex-shrink:0;width:82px;height:82px;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid var(--border);position:relative">
+                    ${item.type === 'video'
+                      ? `<div style="width:100%;height:100%;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:1.8rem">🎬</span></div>`
+                      : `<img src="${esc(item.url)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>`}
+                  </div>`).join('')}
+              </div>`
+          }
+        </div>
 
         <!-- All files -->
         ${renderAllFiles(p)}
@@ -2088,6 +2122,42 @@ function renderProperty() {
         <div style="display:flex;gap:10px;margin-top:4px">
           <button class="btn-secondary" onclick="closeModal('add-mort-modal')">${t('cancel')}</button>
           <button class="btn-primary" style="flex:2" onclick="submitAddMortgage('${esc(currency)}')">${t('save')}</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="quick-exp-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('quick-exp-modal')">
+      <div class="modal-card">
+        <div class="modal-title">➕ ${t('add_expense')}</div>
+        <div class="form-group">
+          <label>${t('expense_cat_label')}</label>
+          <select id="qexp-cat" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:1rem;padding:12px 14px;width:100%;direction:rtl">
+            <option value="maintenance">🔧 ${t('maintenance')}</option>
+            <option value="improvements">🏗️ ${t('improvements')}</option>
+            <option value="oneTime">💸 ${t('one_time_expenses')}</option>
+            <option value="tax">🏛️ ${t('taxes')}</option>
+            <option value="brokerage">🤝 ${t('brokerage')}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>${t('description')}</label>
+          <input type="text" id="qexp-desc" placeholder="${t('expense_desc_ph')}" />
+        </div>
+        <div class="form-group">
+          <label>${t('amount_label')} (${curSym})</label>
+          <input type="number" id="qexp-amount" placeholder="0" inputmode="numeric" />
+        </div>
+        <div class="form-group">
+          <label>${t('date_label')}</label>
+          <input type="date" id="qexp-date" value="${todayStr}" />
+        </div>
+        <div class="form-group">
+          <label>${t('attached_files_optional')}</label>
+          <input type="file" id="qexp-files" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" class="file-input" />
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn-secondary" onclick="closeModal('quick-exp-modal')">${t('cancel')}</button>
+          <button class="btn-primary" style="flex:2" onclick="submitQuickExpense('${esc(currency)}')">${t('save')}</button>
         </div>
       </div>
     </div>
@@ -4138,6 +4208,129 @@ function showYieldCalculator() {
     const sel = document.getElementById('_yc-currency');
     if (sel && state.displayCurrency) sel.value = state.displayCurrency;
   });
+}
+
+// ===== ALBUM =====
+async function uploadAlbumMedia() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = 'image/*,video/*';
+  input.onchange = async () => {
+    const files = Array.from(input.files);
+    if (!files.length) return;
+    const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+    if (!p) return;
+    const existing = p.album || [];
+    const remaining = 10 - existing.length;
+    if (remaining <= 0) { toast(t('album_max')); return; }
+    const toUpload = files.slice(0, remaining);
+    toast(t('uploading_files'));
+    try {
+      const uploaded = await uploadFiles(toUpload, `${state.currentUser}/${p.id}/album`);
+      if (!p.album) p.album = [];
+      p.album.push(...uploaded.map(f => ({ ...f, type: f.name.match(/\.(mp4|mov|avi|webm|mkv|m4v)$/i) ? 'video' : 'image' })));
+      await saveData();
+      toast(`✓ ${toUpload.length} ${t('files_uploaded')}`);
+      render();
+    } catch { toast(t('error_upload')); }
+  };
+  input.click();
+}
+
+function showAlbum(startIdx = 0) {
+  if (document.getElementById('_album-ov')) return;
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  const album = p?.album || [];
+  if (!album.length) return;
+
+  let idx = Math.min(startIdx, album.length - 1);
+  const canEdit = !state.viewOnly;
+  const overlay = document.createElement('div');
+  overlay.id = '_album-ov';
+  Object.assign(overlay.style, {
+    position: 'fixed', inset: '0',
+    background: 'rgba(0,0,0,0.97)',
+    zIndex: '10001', display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+  });
+
+  function drawAlbum() {
+    const item = album[idx];
+    overlay.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 14px;z-index:2;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent)">
+        <button onclick="document.getElementById('_album-ov').remove()" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:40px;height:40px;color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent">✕</button>
+        <span style="color:rgba(255,255,255,0.8);font-size:0.9rem;font-weight:600">${idx+1} / ${album.length}</span>
+        ${canEdit ? `<button onclick="_albDel(${idx})" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:10px;color:rgba(239,68,68,0.9);font-size:0.78rem;font-weight:700;padding:7px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent">🗑</button>` : '<div style="width:40px"></div>'}
+      </div>
+      <div style="position:absolute;top:50%;left:8px;transform:translateY(-50%);z-index:2">
+        ${idx > 0 ? `<button onclick="_albNav(-1)" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:48px;height:48px;color:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent">‹</button>` : ''}
+      </div>
+      <div style="position:absolute;top:50%;right:8px;transform:translateY(-50%);z-index:2">
+        ${idx < album.length - 1 ? `<button onclick="_albNav(1)" style="background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:48px;height:48px;color:#fff;font-size:1.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent">›</button>` : ''}
+      </div>
+      <div style="max-width:100vw;max-height:calc(100dvh - 120px);display:flex;align-items:center;justify-content:center;padding:68px 52px 18px">
+        ${item.type === 'video'
+          ? `<video src="${esc(item.url)}" controls playsinline style="max-width:100%;max-height:calc(100dvh - 140px);border-radius:12px;outline:none"></video>`
+          : `<img src="${esc(item.url)}" style="max-width:100%;max-height:calc(100dvh - 140px);border-radius:12px;object-fit:contain" />`}
+      </div>
+      <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;font-size:0.72rem;color:rgba(255,255,255,0.35);padding:0 20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.name||'')}</div>
+    `;
+  }
+
+  window._albNav = dir => { idx = Math.max(0, Math.min(album.length - 1, idx + dir)); drawAlbum(); };
+  window._albDel = async i => {
+    if (!confirm(t('confirm_delete_album'))) return;
+    const c2 = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+    const p2 = (c2?.properties || []).find(p => p.id === state.currentPropertyId);
+    if (!p2) return;
+    p2.album.splice(i, 1);
+    album.splice(i, 1);
+    await saveData();
+    if (!album.length) { overlay.remove(); render(); return; }
+    idx = Math.min(idx, album.length - 1);
+    drawAlbum();
+    render();
+  };
+
+  drawAlbum();
+  document.body.appendChild(overlay);
+}
+
+// ===== QUICK EXPENSE =====
+async function submitQuickExpense(displayCurrency) {
+  const cat    = document.getElementById('qexp-cat')?.value;
+  const desc   = (document.getElementById('qexp-desc')?.value || '').trim();
+  const amount = parseFloat(document.getElementById('qexp-amount')?.value);
+  const date   = document.getElementById('qexp-date')?.value;
+  const filesEl = document.getElementById('qexp-files');
+  if (!cat || !amount || amount <= 0) { toast(t('fill_month_amount')); return; }
+  const country = (state.data?.countries || []).find(c => c.id === state.currentCountryId);
+  const p = (country?.properties || []).find(p => p.id === state.currentPropertyId);
+  if (!p) return;
+  const amountUSD = amount / (rates[displayCurrency] || 1);
+  const entry = { id: uid(), description: desc || t('add_expense'), amount: amountUSD, date: date || new Date().toISOString().slice(0,10), files: [] };
+  if (filesEl?.files?.length) {
+    toast(t('uploading_files'));
+    try { entry.files = await uploadFiles(Array.from(filesEl.files), `${state.currentUser}/${p.id}/${cat}/${entry.id}`); } catch {}
+  }
+  const catKeyMap = { maintenance: 'maintenance', improvements: 'improvements', oneTime: 'oneTimeExpenses', brokerage: 'brokerages' };
+  if (cat === 'tax') {
+    if (!p.tax) p.tax = {};
+    if (!p.tax.payments) p.tax.payments = [];
+    p.tax.payments.push(entry);
+  } else {
+    const key = catKeyMap[cat];
+    if (!p[key]) p[key] = [];
+    p[key].push(entry);
+  }
+  closeModal('quick-exp-modal');
+  toast(t('saving'));
+  await saveData();
+  toast(`✓ ${t('expense_saved')}`);
+  render();
 }
 
 function showValueBreakdown() {
