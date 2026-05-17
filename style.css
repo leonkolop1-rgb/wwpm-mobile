@@ -566,6 +566,21 @@ body::after {
   top: 0;
   z-index: 10;
 }
+.top-bar.top-bar-2row {
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  padding: env(safe-area-inset-top) 6px 0;
+}
+.top-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+}
+.top-bar-row + .top-bar-row {
+  border-top: 1px solid rgba(99,102,241,0.08);
+}
 .top-bar-title {
   font-family: var(--font-num);
   font-size: 1rem;

@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 93;
+const APP_VERSION = 94;
 
 const CHANGELOG = {
+  94: 'תפריט עליון בשתי שורות — כפתורים נוחים יותר ופחות צפופים',
   93: 'כפתור הזן שכ"ד — כפתור צהוב ישיר להזנת שכירות חסרה מהעמוד הראשי',
   92: 'מחשבון תשואה — דרופדאון מטבע, כפתור חשב וריבוע תוצאות בסגול',
   91: 'מחשבון תשואה — תשואה ברוטו ונטו בזמן אמת עם הסבר על החישוב',
@@ -1177,18 +1178,25 @@ function renderHome() {
     : allCountries;
   return `
     <div class="page">
-      <header class="top-bar">
-        ${renderInfoBtn()}
-        <div class="top-bar-actions">
-          ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)">＋</button>` : ''}
-          <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
-          <button class="icon-btn" onclick="showYieldCalculator()" title="${t('yield_calc_title')}">🧮</button>
-          <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
-          ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
-          ${renderFeedbackBtn()}
-          ${renderLangDropdown('topbar-lang', true)}
-          ${renderCurrencySelector()}
-          <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
+      <header class="top-bar top-bar-2row">
+        <div class="top-bar-row">
+          ${renderInfoBtn()}
+          <div class="top-bar-actions">
+            ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)" title="${t('add_country')}">＋</button>` : ''}
+            <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
+            ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
+            <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
+          </div>
+        </div>
+        <div class="top-bar-row">
+          <div style="flex:1"></div>
+          <div class="top-bar-actions">
+            <button class="icon-btn" onclick="showYieldCalculator()" title="${t('yield_calc_title')}">🧮</button>
+            <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
+            ${renderFeedbackBtn()}
+            ${renderLangDropdown('topbar-lang', true)}
+            ${renderCurrencySelector()}
+          </div>
         </div>
       </header>
       <div class="content">
