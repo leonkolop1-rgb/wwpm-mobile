@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 94;
+const APP_VERSION = 95;
 
 const CHANGELOG = {
+  95: 'תיקון: תפריט 2 שורות inline + כפתור הזן שכ"ד מנווט לנכס ופותח טופס',
   94: 'תפריט עליון בשתי שורות — כפתורים נוחים יותר ופחות צפופים',
   93: 'כפתור הזן שכ"ד — כפתור צהוב ישיר להזנת שכירות חסרה מהעמוד הראשי',
   92: 'מחשבון תשואה — דרופדאון מטבע, כפתור חשב וריבוע תוצאות בסגול',
@@ -1178,19 +1179,18 @@ function renderHome() {
     : allCountries;
   return `
     <div class="page">
-      <header class="top-bar top-bar-2row">
-        <div class="top-bar-row">
+      <header class="top-bar" style="flex-direction:column;align-items:stretch;height:auto;padding:env(safe-area-inset-top) 4px 0">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:50px">
           ${renderInfoBtn()}
-          <div class="top-bar-actions">
+          <div class="top-bar-actions" style="gap:2px">
             ${!state.viewOnly ? `<button class="icon-btn" onclick="showModal('add-country-modal')" style="font-size:1.4rem;color:var(--accent)" title="${t('add_country')}">＋</button>` : ''}
             <button class="icon-btn" onclick="goToAnalytics()" title="${t('analytics_title')}">📊</button>
             ${state.isAdmin ? `<button class="icon-btn" onclick="goToAdmin()" title="${t('admin_title')}">👑</button>` : ''}
             <button class="icon-btn" onclick="doLogout()" title="${t('logout')}">⏻</button>
           </div>
         </div>
-        <div class="top-bar-row">
-          <div style="flex:1"></div>
-          <div class="top-bar-actions">
+        <div style="display:flex;align-items:center;justify-content:flex-end;height:46px;border-top:1px solid rgba(99,102,241,0.1)">
+          <div class="top-bar-actions" style="gap:2px">
             <button class="icon-btn" onclick="showYieldCalculator()" title="${t('yield_calc_title')}">🧮</button>
             <button class="icon-btn" onclick="sharePDF()" title="${t('share_pdf')}">🔗</button>
             ${renderFeedbackBtn()}
@@ -2785,7 +2785,7 @@ function renderPortfolioSummary(countries) {
         ${missingRent.map(m => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
             <div style="font-size:0.75rem;color:rgba(245,158,11,0.75)">✦ ${esc(m.prop)} <span style="opacity:0.6">(${esc(m.country)})</span></div>
-            <button onclick="openQuickRent('${esc(m.propId)}','${esc(m.countryId)}',event)" style="
+            <button onclick="goToPropertyForRent('${esc(m.propId)}','${esc(m.countryId)}')" style="
               background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);
               border-radius:8px;padding:4px 10px;font-size:0.7rem;font-weight:800;
               color:rgba(245,158,11,1);cursor:pointer;white-space:nowrap;
@@ -3963,6 +3963,34 @@ function goToProperty(id) {
   state.view = 'property';
   render();
   window.scrollTo(0, 0);
+}
+
+function goToPropertyForRent(propId, countryId) {
+  state.currentCountryId  = countryId;
+  state.currentPropertyId = propId;
+  state.view = 'property';
+  render();
+  window.scrollTo(0, 0);
+  // open the quick-rent modal after a short delay so DOM is ready
+  setTimeout(() => {
+    const country = (state.data?.countries || []).find(c => c.id === countryId);
+    const p       = (country?.properties  || []).find(p => p.id === propId);
+    if (!p || !country) return;
+    const currency = country.currency || 'USD';
+    const curSym   = CURRENCIES[currency] || currency;
+    const nowMonth = new Date().toISOString().slice(0, 7);
+    const prefill  = p.monthlyRent ? Math.round(p.monthlyRent * (rates[currency] || 1)) : '';
+    const nameEl   = document.getElementById('qr-prop-name');
+    const labelEl  = document.getElementById('qr-cur-label');
+    const monthEl  = document.getElementById('qr-month');
+    const amtEl    = document.getElementById('qr-amount');
+    if (nameEl)  nameEl.textContent  = p.name || p.city || '—';
+    if (labelEl) labelEl.textContent = `${t('amount_label')} (${curSym})`;
+    if (monthEl) monthEl.value = nowMonth;
+    if (amtEl)   amtEl.value   = prefill;
+    showModal('quick-rent-modal');
+    setTimeout(() => { amtEl?.focus(); amtEl?.select(); }, 80);
+  }, 150);
 }
 
 function goToExpenses(category) {
