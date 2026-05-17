@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 92;
+const APP_VERSION = 93;
 
 const CHANGELOG = {
+  93: 'כפתור הזן שכ"ד — כפתור צהוב ישיר להזנת שכירות חסרה מהעמוד הראשי',
   92: 'מחשבון תשואה — דרופדאון מטבע, כפתור חשב וריבוע תוצאות בסגול',
   91: 'מחשבון תשואה — תשואה ברוטו ונטו בזמן אמת עם הסבר על החישוב',
   90: 'פרטי שוכר + חוזה + דרופ דאון בעלות + שווי לפי אחוז + תשואה ללא USD',
@@ -312,7 +313,7 @@ const STRINGS = {
     portfolio_value: 'שווי תיק נכסים', monthly_rent_label: 'שכ"ד חודשי',
     mortgages_label: 'משכנתאות', net_monthly_flow: 'תזרים נטו/חודש',
     net_yearly_flow: 'תזרים נטו/שנה',
-    missing_rent_prefix: 'שכ"ד', not_entered_yet: 'טרם הוזן:',
+    missing_rent_prefix: 'שכ"ד', not_entered_yet: 'טרם הוזן:', enter_rent: 'הזן שכ"ד',
     // Country summary
     rent_month_short: 'שכ"ד/חודש', yield_label: 'תשואה',
     net_flow_label: 'תזרים נטו', rented_label: 'מושכרים',
@@ -516,7 +517,7 @@ const STRINGS = {
     portfolio_value: 'Portfolio Value', monthly_rent_label: 'Monthly rent',
     mortgages_label: 'Mortgages', net_monthly_flow: 'Net flow/month',
     net_yearly_flow: 'Net flow/year',
-    missing_rent_prefix: 'Rent', not_entered_yet: 'not entered yet:',
+    missing_rent_prefix: 'Rent', not_entered_yet: 'not entered yet:', enter_rent: 'Enter rent',
     // Country summary
     rent_month_short: 'Rent/month', yield_label: 'Yield',
     net_flow_label: 'Net cash flow', rented_label: 'Rented',
@@ -720,7 +721,7 @@ const STRINGS = {
     portfolio_value: 'Стоимость портфеля', monthly_rent_label: 'Аренда в месяц',
     mortgages_label: 'Ипотека', net_monthly_flow: 'Поток/мес',
     net_yearly_flow: 'Поток/год',
-    missing_rent_prefix: 'Аренда', not_entered_yet: 'не внесена:',
+    missing_rent_prefix: 'Аренда', not_entered_yet: 'не внесена:', enter_rent: 'Внести аренду',
     // Country summary
     rent_month_short: 'Аренда/мес', yield_label: 'Доходность',
     net_flow_label: 'Чистый поток', rented_label: 'Арендовано',
@@ -2753,7 +2754,7 @@ function renderPortfolioSummary(countries) {
     for (const p of (c.properties || [])) {
       if (p.status !== 'rented') continue;
       const hasPaid = (p.rentHistory || []).some(r => r.month === nowMonth && !r.autoFilled);
-      if (!hasPaid) missingRent.push({ prop: p.name || p.city || '—', country: c.name });
+      if (!hasPaid) missingRent.push({ prop: p.name || p.city || '—', country: c.name, propId: p.id, countryId: c.id });
     }
   }
 
@@ -2773,7 +2774,16 @@ function renderPortfolioSummary(countries) {
       ${missingRent.length ? `
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(245,158,11,0.2)">
         <div style="font-size:0.72rem;color:rgba(245,158,11,0.9);font-weight:700;margin-bottom:6px">⚠ ${t('missing_rent_prefix')} ${curMonthHeb} ${t('not_entered_yet')}</div>
-        ${missingRent.map(m => `<div style="font-size:0.75rem;color:rgba(245,158,11,0.75);padding:2px 0">✦ ${esc(m.prop)} <span style="opacity:0.6">(${esc(m.country)})</span></div>`).join('')}
+        ${missingRent.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;gap:8px">
+            <div style="font-size:0.75rem;color:rgba(245,158,11,0.75)">✦ ${esc(m.prop)} <span style="opacity:0.6">(${esc(m.country)})</span></div>
+            <button onclick="openQuickRent('${esc(m.propId)}','${esc(m.countryId)}',event)" style="
+              background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);
+              border-radius:8px;padding:4px 10px;font-size:0.7rem;font-weight:800;
+              color:rgba(245,158,11,1);cursor:pointer;white-space:nowrap;
+              -webkit-tap-highlight-color:transparent;flex-shrink:0;
+            ">${t('enter_rent')}</button>
+          </div>`).join('')}
       </div>` : ''}
     </div>`;
 }
