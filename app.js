@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 99;
+const APP_VERSION = 100;
 
 const CHANGELOG = {
+  100: 'תיקון כפתור עדכון — תמיד עושה reload גם כשה-SW כבר פעיל',
   99: 'עריכת הערות נכס — כפתור ערוך, מודל textarea, שמירה ישירה',
   98: 'גרף השקעה מול שווי — מספרים בתוך/ליד כל בר בגרף',
   97: 'כותרת עמוד נכס — שורה 1 שם+מדינה, שורה 2 כל הכפתורים',
@@ -4519,25 +4520,23 @@ let _swReg = null;
 
 function applyUpdate() {
   localStorage.setItem('wwpm-version', APP_VERSION);
-  if (_swReg?.waiting) {
-    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
-  } else {
-    location.reload();
-  }
+  if (_swReg?.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  setTimeout(() => location.reload(), 250);
 }
 
 async function forceUpdateCheck() {
   if (!('serviceWorker' in navigator) || !_swReg) { location.reload(); return; }
-  if (state.updateAvailable && _swReg.waiting) {
-    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  // If update is already known — skip waiting if needed, then always reload
+  if (state.updateAvailable) {
+    if (_swReg.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    setTimeout(() => location.reload(), 250);
     return;
   }
   toast(t('checking_update'));
   try { await _swReg.update(); } catch {}
   if (_swReg.waiting) {
-    state.updateAvailable = true;
-    render();
-    showUpdatePopup();
+    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    setTimeout(() => location.reload(), 250);
   } else {
     toast('✓ ' + t('up_to_date'));
   }
