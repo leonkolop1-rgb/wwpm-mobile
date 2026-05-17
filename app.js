@@ -1,9 +1,10 @@
 'use strict';
 
 // ===== VERSION =====
-const APP_VERSION = 97;
+const APP_VERSION = 98;
 
 const CHANGELOG = {
+  98: 'גרף השקעה מול שווי — מספרים בתוך/ליד כל בר בגרף',
   97: 'כותרת עמוד נכס — שורה 1 שם+מדינה, שורה 2 כל הכפתורים',
   96: 'הוצאות מהירות עם קבצים + אלבום תמונות/וידאו עד 10 קבצים לכל נכס',
   95: 'תיקון: תפריט 2 שורות inline + כפתור הזן שכ"ד מנווט לנכס ופותח טופס',
@@ -2677,30 +2678,42 @@ function renderValueVsPurchaseChart(countries) {
   }).filter(d => d.val > 0 || d.inv > 0);
   if (data.length < 1) return '';
   const maxV = Math.max(...data.map(d => Math.max(d.val, d.inv))) || 1;
-  const W = 300, H = 80, barH = 20, gap = 10;
+  const dc = state.displayCurrency || 'USD';
+  const W = 210, barH = 20, gap = 12;
   const totalH = data.length * (barH * 2 + gap) + gap;
   const bars = data.map((d, i) => {
     const y = gap + i * (barH * 2 + gap);
-    const wVal = (d.val / maxV * W).toFixed(1);
-    const wInv = (d.inv / maxV * W).toFixed(1);
+    const wVal = (d.val / maxV * W);
+    const wInv = (d.inv / maxV * W);
     const gainColor = d.val >= d.inv ? '#10b981' : '#ef4444';
     const flagEl = FLAGIMGS[d.name]
       ? `<image href="${FLAGIMGS[d.name]}" x="-38" y="${y + 4}" width="30" height="20" preserveAspectRatio="xMidYMid slice" clip-path="inset(0 0 0 0 round 4px)"/>`
       : `<text x="-8" y="${y + barH - 4}" text-anchor="middle" font-size="14">${FLAGS[d.name]||'🌍'}</text>`;
     const gInv = `gi${i}`, gVal = `gv${i}`;
+    const invLabel = fmtCurrency(Math.round(d.inv), dc);
+    const valLabel = fmtCurrency(Math.round(d.val), dc);
+    const THRESH = 52;
+    const invTxt = wInv >= THRESH
+      ? `<text x="${(wInv - 5).toFixed(1)}" y="${y + barH - 6}" text-anchor="end" font-size="9" font-weight="700" fill="rgba(255,255,255,0.92)" font-family="-apple-system,sans-serif">${invLabel}</text>`
+      : `<text x="${(wInv + 5).toFixed(1)}" y="${y + barH - 6}" text-anchor="start" font-size="9" font-weight="700" fill="rgba(130,140,255,0.85)" font-family="-apple-system,sans-serif">${invLabel}</text>`;
+    const valTxt = wVal >= THRESH
+      ? `<text x="${(wVal - 5).toFixed(1)}" y="${y + barH + 2 + barH - 6}" text-anchor="end" font-size="9" font-weight="700" fill="rgba(255,255,255,0.92)" font-family="-apple-system,sans-serif">${valLabel}</text>`
+      : `<text x="${(wVal + 5).toFixed(1)}" y="${y + barH + 2 + barH - 6}" text-anchor="start" font-size="9" font-weight="700" fill="${gainColor === '#10b981' ? 'rgba(16,185,129,0.85)' : 'rgba(239,68,68,0.85)'}" font-family="-apple-system,sans-serif">${valLabel}</text>`;
     return `<defs>
       <linearGradient id="${gInv}" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.55"/>
-        <stop offset="100%" stop-color="#818cf8" stop-opacity="0.25"/>
+        <stop offset="0%" stop-color="#6366f1" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#818cf8" stop-opacity="0.4"/>
       </linearGradient>
       <linearGradient id="${gVal}" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="${gainColor}" stop-opacity="0.95"/>
-        <stop offset="100%" stop-color="${gainColor}" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="${gainColor}" stop-opacity="0.6"/>
       </linearGradient>
     </defs>
       ${flagEl}
-      <rect x="0" y="${y}" width="${wInv}" height="${barH}" rx="4" fill="url(#${gInv})"/>
-      <rect x="0" y="${y + barH + 2}" width="${wVal}" height="${barH}" rx="4" fill="url(#${gVal})"/>
+      <rect x="0" y="${y}" width="${wInv.toFixed(1)}" height="${barH}" rx="4" fill="url(#${gInv})"/>
+      ${invTxt}
+      <rect x="0" y="${y + barH + 2}" width="${wVal.toFixed(1)}" height="${barH}" rx="4" fill="url(#${gVal})"/>
+      ${valTxt}
     `;
   }).join('');
   return `
@@ -2711,7 +2724,7 @@ function renderValueVsPurchaseChart(countries) {
         <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:8px;border-radius:2px;background:#10b981;display:inline-block"></span>${t('current_value')}</span>
       </div>
       <div style="overflow-x:auto">
-        <svg width="${W + 44}" height="${totalH}" viewBox="-44 0 ${W + 44} ${totalH}" style="display:block">
+        <svg width="${W + 44 + 80}" height="${totalH}" viewBox="-44 0 ${W + 44 + 80} ${totalH}" style="display:block;max-width:100%">
           ${bars}
         </svg>
       </div>
